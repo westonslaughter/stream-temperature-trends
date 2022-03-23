@@ -18,6 +18,7 @@ for(var in vars){
 
   data <- ldply(fp, readRDS)
   data$site <- str_match(data$.id, "//(nwis_[0-9]+)-")[,2]
+  data <- subset(data, select=-c(.id))
 
   csv_fp <- paste0("./data/sites/", var, ".csv")
   fwrite(data, csv_fp)
@@ -25,15 +26,3 @@ for(var in vars){
   print(paste("SUCCESS:", var))
   print(paste("file saved to", csv_fp))
 }
-
-
-# manual
-
-fp <- site_files[grep("disch", site_files)]
-names(fp) <- paste(fp)
-data <- ldply(fp, readRDS)
-data$site <- str_match(data$.id, "//(nwis_[0-9]+)-")[,2]
-data <- subset(data, select=-c(.id))
-
-## csv_fp <- paste0("./data/sites/", "disch", ".csv")
-## fwrite(data, csv_fp)
