@@ -1,44 +1,10 @@
-# Title: Site Filter
-# this script will create the list of all USGS sites with temp data > 10 years
 library(dataRetrieval)
 library(dplyr)
 library(mda.streams)
 
-tempCode <- "00010"
-dischCode <- "00061"
-
-# state by state for loop, to identify temp sites in USGS
-for (state in state.abb[which(state.abb == "IN"):which(state.abb == "MA")]) {
-  tryCatch(
-    expr = {
-      print(paste("attempting pull, USGS temp data: ", state))
-
-      # get all sites with temp data for state
-      sitesTemp <- whatNWISdata(stateCd = state,
-                            parameterCd = c(tempCode, dischCode))
-
-      # > 10 years of data
-      sitesTemp_filter <- sitesTemp %>%
-          mutate(period = as.Date(end_date) - as.Date(begin_date)) %>%
-          filter(period > 10*365)
-
-      # keep only continuous data
-      sitesTemp_uv <- sitesTemp_filter %>%
-        filter(data_type_cd == "dv")
-
-    },
-    error = function(e) {
-      print(paste("failed to load sites with temp data:", state))
-    },
-    finally = {
-      fp <- paste0("data/sites/dv/", state, ".csv")
-      write.csv(sitesTemp_uv, file = fp)
-    }
-  )
-}
-
 # names of target varibales for mda.streams function
-var_codes <- c("wtr", "disch")
+var_codes <- c("00010")
+fails <- c()
 
 for (var_code in var_codes) {
   # loop thru target variables
@@ -47,7 +13,7 @@ for (var_code in var_codes) {
     # start list to append failed sites (if any)
     failed_sites <- c()
 
-    csv_fp <- paste0("./data/sites/uv/", state, ".csv")
+    csv_fp <- paste0("./data/sites/dv/", state, ".csv")
     site_data <- read.csv(csv_fp)
     site_list <- unique(site_data$site_no)
 
@@ -65,31 +31,64 @@ for (var_code in var_codes) {
 
         tryCatch(
           expr = {
+
             ## get dates for site
-            begin <- site_data[site_data$site_no == site_code,]$begin_date
-            end <- site_data[site_data$site_no == site_code,]$end_date
+            begin <- min(site_data[site_data$site_no == site_code,]$begin_date)
+            end <- max(site_data[site_data$site_no == site_code,]$end_date)
 
-            # actual data pull, for target site and variable
-            site_nwis <- paste0("nwis_", site_code)
-            q_data <- stage_nwis_ts(site_nwis,
-                              var_code,
-                              times = c(begin, end),
-                              folder="./data/temp/dv/")
+            # data fp
+            if(var_code == "00010") {
+              var_name <- "wtr"
+            } else {
+              var_name <- "disch"
+            }
 
-            setTxtProgressBar(pb, i)
-            print(paste("pulled", state, var_code, site_code))
+
+            if(nchar(site_code) >= 8) {
+              # actual data pull, for target site and variable
+              q_data <- readNWISdata(sites = site_code,
+                             parameterCd = var_code,
+                             service = "dv",
+                             startDate = begin,
+                             endDate = end)
+
+              data_fp <- paste0("./data/vars/dv/", var_name, "/", state, "_", site_code, ".csv")
+              write.csv(q_data, data_fp)
+            } else {
+              print(paste("---- warning: first try failed, retrying with leading zero", "", sep="\n"))
+              site_code <- paste0("0", site_code)
+
+              q_data <- readNWISdata(sites = site_code,
+                             parameterCd = var_code,
+                             service = "dv",
+                             startDate = begin,
+                             endDate = end)
+
+              data_fp <- paste0("./data/vars/dv/", var_name, "/", state, "_", site_code, ".csv")
+              write.csv(q_data, data_fp)
+            }
           },
           error = function(e) {
-            print(paste("---- error:", state, var_code, site_code))
-            failed_sites <- c(failed_sites, site_code)
+            print(paste("---- error:", state, var_name, site_code))
+            print("     query failed")
+          },
+
+          finally = {
+            if(nrow(q_data) > 0) {
+              print(paste("pulled", state, var_name, site_code))
+            } else {
+              print(paste("---- failed:", state, var_name, site_code))
+              print("     dataframe empty")
+              fails <- c(fails, site_code)
+            }
             setTxtProgressBar(pb, i)
           }
         )
       }
     }
-    print(paste("failed sites:", failed_sites))
   }
 }
 
+print(paste("_____ failed sites:", fails, sep = "\n"))
   # USGS parameter codes       CrossReference URL: https://help.waterdata.usgs.gov/parameter_cd?group_cd=PHY
 ## p_codes <- c("temp"="00010", "Q"="00060", "DO"="00300", "mean_depth"="00064")

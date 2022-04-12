@@ -1,28 +1,38 @@
-library(zoo)
 library(tidyverse)
 library(stringr)
 library(plyr)
 library(data.table)
 
-# load sites and list target variables
-site_files <- list.files(path = "./data/temp/", pattern = ".rds", full.names = TRUE)
-
-vars <- c("wtr", "disch")
+mode <- "dv"
+vars <- c("wtr")
 
 # loop through variables, writing compiled csv
 for(var in vars){
-  print(paste("PULLING:", var))
+  # load sites and list target variables
+  fp <- paste0("./data/vars/", "dv", "/", "wtr")
 
-  fp <- site_files[grep(var, site_files)]
-  names(fp) <- paste(fp)
+  site_files <- list.files(path = fp, pattern = ".csv", full.names = TRUE)
 
-  data <- ldply(fp, readRDS)
-  data$site <- str_match(data$.id, "//(nwis_[0-9]+)-")[,2]
-  data <- subset(data, select=-c(.id))
+  ## fp <- site_files[grep(var, site_files)]
+  ## names(site_files) <- paste(site_files)
 
-  csv_fp <- paste0("./data/sites/", var, ".csv")
-  fwrite(data, csv_fp)
+  q_data <- ldply(
+    .data = site_files,
+    .fun = function(x){
+      fread(file=x,  select = c("site_no", "dateTime", "X_00010_00001", "X_00010_00001_cd"))
+    },
+    .parallel = TRUE)
+
+  ## data$site <- str_match(data$.id, "(?<![a-z]{2})[0-9]+")[1]
+  ## data <- subset(data, select=-c(.id))
+
+  csv_fp <- paste0("./data/vars/", mode, "/compiled/", "wtr", ".csv")
+  colnames(q_data) <- c("site", "datetime", "wtr")
+  fwrite(q_data, csv_fp)
 
   print(paste("SUCCESS:", var))
   print(paste("file saved to", csv_fp))
 }
+
+
+# have to compile info as well

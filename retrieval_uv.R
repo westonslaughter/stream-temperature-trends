@@ -38,7 +38,7 @@ for (state in state.abb) {
 }
 
 # names of target varibales for mda.streams function
-var_codes <- c("wtr")
+var_codes <- c("disch")
 
 for (var_code in var_codes) {
   # loop thru target variables
@@ -47,7 +47,7 @@ for (var_code in var_codes) {
     # start list to append failed sites (if any)
     failed_sites <- c()
 
-    csv_fp <- paste0("./data/sites/uv/", state, ".csv")
+    csv_fp <- paste0("./data/sites/uv/", "AL", ".csv")
     site_data <- read.csv(csv_fp)
     site_list <- unique(site_data$site_no)
 
@@ -76,8 +76,24 @@ for (var_code in var_codes) {
                               times = c(begin, end),
                               folder="./data/temp")
 
+            # leading zero check
+            if(is.null(q_data)) {
+              print("warning: first try failed, retrying with leading zero")
+
+              site_nwis <- paste0("nwis_", "0", site_code)
+              q_data <- stage_nwis_ts(site_nwis,
+                              var_code,
+                              times = c(begin, end),
+                              folder="./data/temp")
+
+              if(is.null(q_data)) {
+                print(paste("---- error:", state, var_code, site_code, "data retrival NULL"))
+              }
+            } else {
+              print(paste("pulled", state, var_code, site_code))
+            }
+
             setTxtProgressBar(pb, i)
-            print(paste("pulled", state, var_code, site_code))
           },
           error = function(e) {
             print(paste("---- error:", state, var_code, site_code))
