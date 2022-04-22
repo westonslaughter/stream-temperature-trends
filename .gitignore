@@ -1,2 +1,5 @@
 data/
 org/
+.Rproj.user
+*.Rproj
+.Rhistory
