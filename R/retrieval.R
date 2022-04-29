@@ -16,29 +16,37 @@ library(dplyr)
 
 source("./R/helpers.R")
 
-# pull all 'dv' temp data
+## data retrieval
+# 'dv' temp data
 stateRetrievalLoop(
   "./data/sites/codes/",
   "./data/dv/temp/"
 )
 
-# pull all 'dv' disch data
+# 'dv' disch data
 stateRetrievalLoop(
   "./data/sites/codes/",
   "./data/dv/disch/",
   varid = "00060",
 )
 
-## x <- read.csv("./data/sites/codes/AK.csv")
-## test <- unique(x$site_no)
+# 'qw' temp data
+stateRetrievalLoop(
+  "./data/sites/codes/",
+  "./data/qw/temp/",
+  svc = "qw"
+)
 
-## begin <- min(x$begin_date)
-## end <- max(x$end_date)
+# 'qw' disch data
+stateRetrievalLoop(
+  "./data/sites/codes/",
+  "./data/qw/disch/",
+  varid = "00060",
+  svc = "qw"
+)
 
-## info <- readNWISdata(
-##             sites = test,
-##             parameterCd = "00060",
-##             service = "dv",
-##             startDate = begin,
-##             endDate = end
-##           )
+## site info retrieval
+stateInfoRetrievalLoop(
+  "./data/sites/codes/",
+  "./data/sites/info/"
+)
