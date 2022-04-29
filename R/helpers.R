@@ -76,3 +76,69 @@ stateRetrievalLoop <- function(readpath, writepath, varid = "00010", svc = "dv",
     )
   }
 }
+
+stateInfoRetrievalLoop <- function(readpath, writepath) {
+  print("USGS site info retrieval")
+
+  for (state in state.abb) {
+    print(paste("-- attempting info pull", state))
+
+    tryCatch(
+      expr = {
+        rp <- paste0(readpath, state, ".csv")
+        wp <- paste0(writepath, state, "_info.csv")
+
+        # read in CSV
+        df <- fread(rp,
+                    colClasses=c("character")
+                    )
+
+        if(nrow(df) == 0) {
+          print(paste("---- WARNING:", state, "input CSV is empty"))
+        } else {
+          codes <- unique(df$site_no)
+
+          site_info <- readNWISsite(
+            siteNumbers = codes
+          )
+
+          # save to wrtiepath
+          write.csv(site_info, wp)
+        }
+        print(paste0("---- ", state, ": DONE"))
+      },
+      error = function(e) {
+        print(paste("---- ERROR:", state))
+      },
+      finally = {
+        # if df empty
+        if(nrow(site_info) < 1) {
+          print(paste("------ results empty:", state, "    ", varid))
+        }
+      }
+    )
+  }
+}
+
+stateCompiler <- function(listfiles) {
+  for (file in listfiles) {
+    tryCatch(
+      expr = {
+          state_data <- fread(file)
+
+          if(!exists("all_df")) {
+            all_df <- state_data
+            print("__ CREATING DATAFRAME __")
+            print(paste("DONE:", file))
+          } else {
+            all_df <- rbind(all_df, state_data, fill = TRUE)
+            print(paste("DONE:", file))
+          }
+        },
+      error = function(e) {
+        print(paste("---- ERROR:", file))
+        }
+    )
+  }
+  return(all_df)
+}

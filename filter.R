@@ -7,7 +7,7 @@ library(data.table)
 cluster <- new_cluster(8)
 
 # import water temp and Q data
-df_disch <- fread("./data/vars/dv/compiled/disch.csv")
+df_disch <- fread("./data/dv/temp/")
 df_wtr <- fread("./data/vars/dv/compiled/wtr.csv")
 
 # clean disch df columns and names

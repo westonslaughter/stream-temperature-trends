@@ -16,27 +16,28 @@ library(dplyr)
 
 source("./R/helpers.R")
 
-# pull all 'dv' temp data
+## data retrieval
+# 'dv' temp data
 stateRetrievalLoop(
   "./data/sites/codes/",
   "./data/dv/temp/"
 )
 
-# pull all 'dv' disch data
+# 'dv' disch data
 stateRetrievalLoop(
   "./data/sites/codes/",
   "./data/dv/disch/",
   varid = "00060",
 )
 
-# pull all 'qw' temp data
+# 'qw' temp data
 stateRetrievalLoop(
   "./data/sites/codes/",
   "./data/qw/temp/",
   svc = "qw"
 )
 
-# pull all 'qw' disch data
+# 'qw' disch data
 stateRetrievalLoop(
   "./data/sites/codes/",
   "./data/qw/disch/",
@@ -44,3 +45,8 @@ stateRetrievalLoop(
   svc = "qw"
 )
 
+## site info retrieval
+stateInfoRetrievalLoop(
+  "./data/sites/codes/",
+  "./data/sites/info/"
+)
