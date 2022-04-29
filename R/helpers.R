@@ -39,14 +39,25 @@ stateRetrievalLoop <- function(readpath, writepath, varid = "00010", svc = "dv",
           begin <- min(df$begin_date)
           end <- max(df$end_date)
 
-          # apply supplied function to the list of sites
-          info <- readNWISdata(
-            sites = codes,
-            parameterCd = varid,
-            service = svc,
-            startDate = begin,
-            endDate = end
-          )
+          if(svc == "qw") {
+            qw_codes <- paste0("USGS-", codes)
+            # get grab sample data
+            info <- readWQPqw(
+              siteNumbers = qw_codes,
+              parameterCd = varid,
+              startDate = begin,
+              endDate = end
+            )
+          } else {
+            # get daily mean data
+            info <- readNWISdata(
+              sites = codes,
+              parameterCd = varid,
+              service = svc,
+              startDate = begin,
+              endDate = end
+            )
+          }
 
           # save to wrtiepath
           write.csv(info, wp)
