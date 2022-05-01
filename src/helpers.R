@@ -120,18 +120,41 @@ stateInfoRetrievalLoop <- function(readpath, writepath) {
   }
 }
 
-stateCompiler <- function(listfiles) {
+fileCompiler <- function(listfiles) {
   for (file in listfiles) {
     tryCatch(
       expr = {
-          state_data <- fread(file)
+          file_data <- fread(file)
 
           if(!exists("all_df")) {
-            all_df <- state_data
+            all_df <- file_data
             print("__ CREATING DATAFRAME __")
             print(paste("DONE:", file))
           } else {
-            all_df <- rbind(all_df, state_data, fill = TRUE)
+            all_df <- rbind(all_df, file_data, fill = TRUE)
+            print(paste("DONE:", file))
+          }
+        },
+      error = function(e) {
+        print(paste("---- ERROR:", file))
+        }
+    )
+  }
+  return(all_df)
+}
+
+featherCompiler <- function(listfiles) {
+  for (file in listfiles) {
+    tryCatch(
+      expr = {
+          file_data <- read_feather(file)
+
+          if(!exists("all_df")) {
+            all_df <- file_data
+            print("__ CREATING DATAFRAME __")
+            print(paste("DONE:", file))
+          } else {
+            all_df <- rbind(all_df, file_data)
             print(paste("DONE:", file))
           }
         },
