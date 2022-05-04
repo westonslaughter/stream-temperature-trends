@@ -1,0 +1,105 @@
+# Seasonal Mann Kendall Daily Data
+```{r}
+library(dplyr)
+library(feather)
+library(ggplot2)
+library(RColorBrewer)
+library(viridis)
+library(plotly)
+library(Kendall)
+source("./src/helpers.R")
+
+# load in USGS-Daymet data
+daily <- read_feather("./data/usgs_daymet_all.feather")
+annual <- read_feather("./data/summary/annual_temp_z.feather")
+
+
+# Daily, SMK
+daily.smk <- daily %>%
+  select(date, site_code, wtr_temp)
+
+# Create time series that matches your data
+# x= start date, "mm/dd/yyyy"
+# x= end date, "mm/dd/yyyy"
+
+timer <- function(x,y){
+  data.frame(
+    date = as.Date(seq(as.POSIXlt(x, format="%Y-%m-%d"), as.POSIXlt(y, format="%Y-%m-%d"), by = 'day'))
+    )
+}
+
+
+
+library(mice)
+library(trend)
+
+daily.ts <- merge(ts, daily.smk, by="date")
+daily.ts.f <- daily.ts %>%
+  tidyr::drop_na()
+library(xts)
+
+
+test.mk <- daily.ts.f %>%
+  filter(site_code == "01481000") %>%
+  select(-site_code) %>%
+  arrange(date)
+
+start.mk <- min(test.mk$date)
+end.mk <- max(test.mk$date)
+ts <- timer(start, end)
+
+test <- ts(test.mk$wtr_temp, frequency = 365, start = c(1971, 1))
+test.smk <- SeasonalMannKendall(test)
+test.sn <- sens.slope(test)
+
+# test
+x <- AutoSMK(daily.smk, ts, "wtr_temp", "01481000", start, end)
+
+# run SMK for each site
+sites <- unique(daily$site_code)
+
+mk.data <- data.frame(
+  site_code = c(''),
+  start_date = c(''),
+  end_date = c(''),
+  smk_tau = c(''),
+  smk_sl = c(''),
+  smk_S = c(''),
+  smk_D = c(''),
+  sen_z = c(''),
+  sen_n = c(''),
+  sen_p = c(''),
+  sen_slope = c(''),
+  sen_conf = c('') 
+)
+
+for(i in 1:length(sites)) {
+  
+    wtr <- daily[daily$site_code == sites[i],] %>%
+        select(date, wtr_temp) %>%
+        arrange(date) %>%
+        tidyr::drop_na()
+  
+    tryCatch(
+      expr = {
+        mk <- SeasonalMannKendall(wtr$wtr_temp)
+        mk.data[i,]$site_code <- sites[i]
+        mk.data[i,]$tau <- mk[[1]][1]
+        mk.data[i,]$sl <- mk[[2]][1]
+        mk.data[i,]$S <- mk[[3]][1]
+        mk.data[i,]$D <- mk[[4]][1]
+
+        mk <- MannKendall(wtr$wtr_temp)
+        mk.data[i,]$site_code <- sites[i]
+        mk.data[i,]$tau <- mk[[1]][1]
+        mk.data[i,]$sl <- mk[[2]][1]
+        mk.data[i,]$S <- mk[[3]][1]
+        mk.data[i,]$D <- mk[[4]][1]
+      },
+      error = function(e) {
+        print(paste("ERROR:", sites[i]))
+    }
+  ) 
+}
+
+```
