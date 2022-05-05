@@ -1,16 +1,7 @@
-----
-title: "plots of annual temperature summaries, USGS"
-output:
-  html_document:
-    toc: true
-    theme: united
----- 
-
 # Basic Analysis
-how are Annual Mean (and Min/Max) stream and air temperatures changing over time? and, what is the relationship between stream and air temperature change?
+how are stream and aire temperatures changing over time? and, what is the relationship between stream and air temperature change?
 
 ```{r}
-
 library(dplyr)
 library(feather)
 library(ggplot2)
@@ -23,6 +14,82 @@ source("./src/helpers.R")
 # load in USGS-Daymet data
 daily <- read_feather("./data/usgs_daymet_all.feather")
 annual <- read_feather("./data/summary/annual_temp_z.feather")
+
+### Mann Kendall
+sites <- unique(daily$site_code)
+
+mk.data <- data.frame(
+  site_code = c(''),
+  tau = c(''),
+  sl = c(''),
+  S = c(''),
+  D = c('')
+)
+
+for(i in 1:length(sites)) {
+  
+    wtr <- daily[daily$site_code == sites[i],] %>%
+        select(date, site_code, wtr_temp) %>%
+        arrange(date) %>%
+        tidyr::drop_na()
+  tryCatch(
+    expr = {
+      mk <- MannKendall(wtr$wtr_temp)
+      mk.data[i,]$site_code <- sites[i]
+      mk.data[i,]$tau <- mk[[1]][1]
+      mk.data[i,]$sl <- mk[[2]][1]
+      mk.data[i,]$S <- mk[[3]][1]
+      mk.data[i,]$D <- mk[[4]][1]
+    },
+    error = function(e) {
+      print(paste("ERROR:", sites[i]))
+    }
+  ) 
+}
+
+# 
+daily.mk <- read.csv("./mannkendall_daily.csv")
+annual.mk <- read.csv("./mannkendall_annual.csv")
+
+# annual
+sites <- unique(annual$site_code)
+
+mk.annual <- data.frame(
+  site_code = c(''),
+  tau = c(''),
+  sl = c(''),
+  S = c(''),
+  D = c('')
+)
+
+for(i in 1:length(sites)) {
+  
+    wtr <- annual[annual$site_code == sites[i],] %>%
+      select(year, site_code, mean_wtr_temp) %>%
+      arrange(year) %>%
+      tidyr::drop_na()
+  
+  tryCatch(
+    expr = {
+      mk <- MannKendall(wtr$mean_wtr_temp)
+      mk.annual[i,]$site_code <- sites[i]
+      mk.annual[i,]$tau <- mk[[1]][1]
+      mk.annual[i,]$sl <- mk[[2]][1]
+      mk.annual[i,]$S <- mk[[3]][1]
+      mk.annual[i,]$D <- mk[[4]][1]
+    },
+    error = function(e) {
+      print(paste("ERROR:", sites[i]))
+    }
+  ) 
+}
+
+daily.wtr <- daily[daily$site_code == sites[2],] %>%
+  select(date, site_code, wtr_temp) %>%
+  arrange(date) %>%
+  tidyr::drop_na()
+
+x <- MannKendall(daily.wtr$wtr_temp)
 
 # sites with > 40 years
 site_n <- annual %>%
@@ -56,27 +123,22 @@ slopemap <- function(v) {
   }
   return(slopes)
 }
-
 ```
 
 ## Annual Trend Analsysis
-let's look at plots of the Mean, Min, and Max Annual temps.
-
-We can also look at the same data transformed to Z-score (a metric of the distance of a particular point to it's dataset mean, values between -x and x, with 0 representing the perfect mean, and -x and x representing x standard deviations below and above the mean respectively), in this way normalizing all site data to itself to facilitate mroe direct comparison of temperature chamge/deviation between sites.
+let's look at a plot of the Z-score (a metric of the distance of a particular point to it's dataset mean, values between -2 and 2, with 0 representing the perfect mean, and -2 and 2 representing two standard deviations below and above respectively)
 
 ### mean
 
 lets filter the data to only site with > 40 year records, before 2022, and, lets calculate the p-values of regressions fit to the relationship between a site's meanimum temperature and the year
-
 ```{r}
 # keep only records > certain period of years
 annual.mean <- annual %>%
   filter(year < 2022) %>%
   filter(site_code %in% site_n$site_code)
 
-# set infinite values to NA
+# what to do with division by zero?
 annual.mean$mean_wtr_air_ratio[is.infinite(annual.mean$mean_wtr_air_ratio)] <- NA
-# remove NA
 annual.mean <- annual.mean %>%
   select(site_code, year, mean_wtr_temp, mean_mean_air_temp, mean_wtr_air_ratio) %>%
   tidyr::drop_na()
@@ -92,7 +154,7 @@ slope.vals = sapply(unique(annual.mean$site_code), function(i) {
   coef(summary(lm(year ~ mean_wtr_temp, data=annual.mean[annual.mean$site_code==i, ])))[2,1]
 })
 
-# do same for ratio
+# for ratio
 ratio.p.vals = sapply(unique(annual.mean$site_code), function(i) {
   coef(summary(lm(year ~ mean_wtr_air_ratio, data=annual.mean[annual.mean$site_code==i, ])))[2,4]
 })
@@ -502,4 +564,353 @@ ts_ratio_max_plot <- ggplotly(
 )
 
 print(ts_ratio_max_plot)
+```
+## Scatter Analysis
+### daily data
+```{r}
+floor_decade = function(value){ return(value - value %% 10) }
+
+daily.mean <- daily %>%
+  filter(site_code %in% site_n$site_code) %>%
+  mutate(
+    year = format(as.Date(date), "%Y"),
+    month = factor(format(as.Date(date), "%m")),
+    decade = as.character(floor_decade(as.numeric(year))),
+    air_mean = (tmin..deg.c. + tmax..deg.c.)/2,
+  ) %>%
+  select(date, month, year, decade, site_code, wtr_temp, air_mean)
+
+# months
+month_cols <- rev(c('#5463a7','#3d66a0','#2c6796','#26678a',
+                  '#e33038','#e02753','#d82a6b','#ca3581',
+                  '#b74292','#a14d9f', '#8857a7','#6e5ea9'))
+
+paris_metro <- c("#FFCE00", "#0064B0", "#9F9825", "#98D4E2", "#C04191", "#F28E42",
+                 "#83C491", "#F3A4BA", "#83C491", "#ceadd2", "#d5c900", "#e3b32a",
+                 "#8d5e2a", "#00814F", "#98D4e2", "#662483", "#b90845", "#f3a4ba",
+                 "#d5c900", "#00a88f")
+
+# scatter plot, water temp to air temp, colored by month
+month_plot <- ggplot(daily.mean,
+                     aes(x = air_mean,
+                         y = wtr_temp),
+                     ) +
+  geom_point(
+    aes(color = month)
+  ) +
+  geom_abline(slope=1) +
+  ## scale_color_manual(values = paris_metro) +
+  ylim(-15, 40) +
+  xlab("Daily Mean Air Temperature") +
+  ylab("Daily Mean Water Temperature") +
+  ggtitle("Daily Mean Water Temp vs Daily Mean Air Temp, USGS 1980-2022") +
+  theme_minimal() +
+  theme(text = element_text(size = 30))
+
+month_plot
+
+# scatter plot, water temp to air temp, colored by decade
+decade_plot <- ggplot(daily.mean,
+                     aes(x = air_mean,
+                         y = wtr_temp),
+                     ) +
+  geom_point(
+    aes(color = decade)
+  ) +
+  geom_abline(slope=1) +
+  ## scale_color_manual(values = paris_metro) +
+  ylim(-15, 40) +
+  xlab("Daily Mean Air Temperature") +
+  ylab("Daily Mean Water Temperature") +
+  ggtitle("Daily Mean Water Temp vs Daily Mean Air Temp, USGS 1980-2022") +
+  theme_minimal() +
+  theme(text = element_text(size = 30))
+
+decade_plot
+
+# scatter plot, water temp to air temp, colored/modelled by year
+year_plot <- ggplot(daily.mean,
+                     aes(x = air_mean,
+                         y = wtr_temp),
+                     ) +
+  geom_point(
+    aes(color = year)
+  ) +
+  ## geom_smooth(
+  ##   method = 'lm',
+  ##   se=FALSE,
+  ##   aes(color = year)
+  ## ) +
+  geom_abline(slope=1) +
+  ## geom_abline(slope=0.9, intercept = 14, aes(color = 'gray')) +
+  scale_color_viridis(discrete = TRUE, option = "plasma") +
+  ylim(-15, 40) +
+  xlab("Daily Mean Air Temperature") +
+  ylab("Daily Mean Water Temperature") +
+  ggtitle("Daily Mean Water Temp vs Daily Mean Air Temp, USGS 1980-2022") +
+  theme_minimal() +
+  theme(text = element_text(size = 30))
+
+year_plot
+
+# scatter plot, water temp to air temp, colored/modelled by year
+daily.mean.s <- daily.mean %>%
+  filter(!decade %in% c("1940", "1950", "1960", "1970") )
+
+site_plot <- ggplot(daily.mean.s,
+                         aes(x = air_mean,
+                             y = wtr_temp),
+                         ) +
+      geom_point(
+        aes(color = year)
+      ) +
+      ## geom_smooth(
+      ##   method = 'lm',
+      ##   se=FALSE,
+      ##   aes(color = site)
+      ## ) +
+      geom_abline(slope=1,
+                color = 'black',
+                linetype = 'dashed'
+            ) +
+      ## geom_abline(slope=0.9, intercept = 14, aes(color = 'gray')) +
+      scale_color_viridis(discrete = TRUE, option = "plasma") +
+      ylim(-15, 40) +
+      xlab("Daily Mean Air Temperature") +
+      ylab("Daily Mean Water Temperature") +
+      ggtitle(paste("Daily Mean Water Temp vs Daily Mean Air Temp, USGS ", dec)) +
+      ## theme_minimal() +
+      ## theme(text = element_text(size = 30)) +
+      facet_wrap(~ site_code)
+
+fp = paste0("./fig/daily/sites_years.png")
+ggsave(fp)
+
+# count
+library(plotly)
+annual.n <- daily.mean %>%
+  group_by(site_code) %>%
+  summarise(
+    n = length(unique(year)),
+    min = min(year),
+    max = max(year)
+  )
+
+daily.mean.s <- daily.mean %>%
+  filter(!decade %in% c("1940", "1950", "1960", "1970") ) %>%
+  tidyr::drop_na() %>%
+  filter(is.finite(wtr_temp)) %>%
+  filter(is.finite(air_mean))
+
+site_plot <- ggplot(daily.mean.s,
+                         aes(x = air_mean,
+                             y = wtr_temp),
+                         ) +
+      geom_density_2d(
+        aes(color = decade)
+      ) +
+      ## geom_smooth(
+      ##   method = 'lm',
+      ##   se=FALSE,
+      ##   aes(color = site)
+      ## ) +
+      geom_abline(slope=1,
+                color = 'black',
+                linetype = 'dashed'
+            ) +
+      ## geom_abline(slope=0.9, intercept = 14, aes(color = 'gray')) +
+      scale_color_viridis(discrete = TRUE, option = "plasma") +
+      ylim(-15, 40) +
+      xlab("Daily Mean Air Temperature") +
+      ylab("Daily Mean Water Temperature") +
+      ggtitle(paste("Daily Mean Water Temp vs Daily Mean Air Temp, USGS ", dec)) +
+      ## theme_minimal() +
+      ## theme(text = element_text(size = 30)) +
+      facet_wrap(~ site_code)
+
+for(dec in c("1980", "1990", "2000", "2010", "2020")) {
+    site_plot <- ggplot(daily.mean.s[daily.mean.s$decade == dec,],
+                         aes(x = air_mean,
+                             y = wtr_temp),
+                         ) +
+      geom_point(
+        aes(color = decade)
+      ) +
+      ## geom_smooth(
+      ##   method = 'lm',
+      ##   se=FALSE,
+      ##   aes(color = site)
+      ## ) +
+      geom_abline(slope=1) +
+      ## geom_abline(slope=0.9, intercept = 14, aes(color = 'gray')) +
+      scale_color_viridis(discrete = TRUE, option = "plasma") +
+      ylim(-15, 40) +
+      xlab("Daily Mean Air Temperature") +
+      ylab("Daily Mean Water Temperature") +
+      ggtitle(paste("Daily Mean Water Temp vs Daily Mean Air Temp, USGS ", dec)) +
+      ## theme_minimal() +
+      ## theme(text = element_text(size = 30)) +
+      facet_wrap(~ site_code)
+
+    fp = paste0("./fig/daily/sites_", dec, ".png")
+    ggsave(fp)
+}
+
+```
+### annual
+```{r}
+floor_decade    = function(value){ return(value - value %% 10) }
+
+annual.mean <- daily %>%
+  group_by()
+  filter(site_code %in% site_n$site_code) %>%
+  mutate(
+    year = format(as.Date(date), "%Y"),
+    month = factor(format(as.Date(date), "%m"),
+    decade = as.character(floor_decade(as.numeric(year))),
+    air_mean = (tmin..deg.c. + tmax..deg.c.)/2,
+  ) %>%
+  select(date, month, year, decade, site_code, wtr_temp, air_mean)
+# months
+month_cols <- rev(c('#5463a7','#3d66a0','#2c6796','#26678a',
+                  '#e33038','#e02753','#d82a6b','#ca3581',
+                  '#b74292','#a14d9f', '#8857a7','#6e5ea9'))
+
+paris_metro <- c("#FFCE00", "#0064B0", "#9F9825", "#98D4E2", "#C04191", "#F28E42",
+                 "#83C491", "#F3A4BA", "#83C491", "#ceadd2", "#d5c900", "#e3b32a",
+                 "#8d5e2a", "#00814F", "#98D4e2", "#662483", "#b90845", "#f3a4ba",
+                 "#d5c900", "#00a88f")
+
+# scatter plot, water temp to air temp, colored by month
+daily_plot <- ggplot(daily.min,
+                     aes(x = air_mean,
+                         y = wtr_temp),
+                     ) +
+  geom_point(
+    aes(color = month)
+  ) +
+  geom_abline(slope=1) +
+  ## scale_color_manual(values = paris_metro) +
+  ylim(-15, 40) +
+  xlab("Daily Mean Air Temperature") +
+  ylab("Daily Mean Water Temperature") +
+  ggtitle("Daily Mean Water Temp vs Daily Mean Air Temp, USGS 1980-2022") +
+  theme_minimal() +
+  theme(text = element_text(size = 30))
+
+# scatter plot, water temp to air temp, colored by decade
+daily_plot <- ggplot(daily.min,
+                     aes(x = air_mean,
+                         y = wtr_temp),
+                     ) +
+  geom_point(
+    aes(color = decade)
+  ) +
+  geom_abline(slope=1) +
+  ## scale_color_manual(values = paris_metro) +
+  ylim(-15, 40) +
+  xlab("Daily Mean Air Temperature") +
+  ylab("Daily Mean Water Temperature") +
+  ggtitle("Daily Mean Water Temp vs Daily Mean Air Temp, USGS 1980-2022") +
+  theme_minimal() +
+  theme(text = element_text(size = 30))
+
+# scatter plot, water temp to air temp, colored/modelled by year
+daily_plot <- ggplot(daily.min,
+                     aes(x = air_mean,
+                         y = wtr_temp),
+                     ) +
+  geom_point(
+    aes(color = year)
+  ) +
+  ## geom_smooth(
+  ##   method = 'lm',
+  ##   se=FALSE,
+  ##   aes(color = year)
+  ## ) +
+  geom_abline(slope=1) +
+  ## geom_abline(slope=0.9, intercept = 14, aes(color = 'gray')) +
+  scale_color_viridis(discrete = TRUE, option = "plasma") +
+  ylim(-15, 40) +
+  xlab("Daily Mean Air Temperature") +
+  ylab("Daily Mean Water Temperature") +
+  ggtitle("Daily Mean Water Temp vs Daily Mean Air Temp, USGS 1980-2022") +
+  theme_minimal() +
+  theme(text = element_text(size = 30))
+```
+
+
+```{r}
+# mean
+# scatter plot, water temp to air temp, colored by year
+mean_plot <- ggplot(annual.mean,
+                     aes(x = mean_wtr_temp,
+                         y = mean_mean_air_temp),
+                     ) +
+  geom_point(
+    aes(color = site_year)
+  ) +
+  geom_abline(slope=1) +
+  ## geom_smooth(
+  ##   method = 'lm',
+  ##   se = FALSE,
+  ##   aes(color = site_code)
+  ## ) +
+  ## scale_color_manual(values = paris_metro) +
+  ylim(-15, 40) +
+  xlab("Annual Mean Air Temperature") +
+  ylab("Annual Mean Water Temperature") +
+  ggtitle("Annual Mean Water Temp vs Daily Mean Air Temp, USGS 1980-2022") +
+  theme_minimal() +
+  theme(text = element_text(size = 30))
+
+mean_plot
+
+# scatter plot, water temp to air temp, colored by site
+site_mean_plot <- ggplot(annual.mean,
+                     aes(x = mean_wtr_temp,
+                         y = mean_mean_air_temp),
+                     ) +
+  geom_point(
+    aes(color = site_code)
+  ) +
+  geom_abline(slope=1) +
+  ## geom_smooth(
+  ##   method = 'lm',
+  ##   se = FALSE,
+  ##   aes(color = site_code)
+  ## ) +
+  ## scale_color_manual(values = paris_metro) +
+  ylim(-15, 40) +
+  xlab("Annual Mean Air Temperature") +
+  ylab("Annual Mean Water Temperature") +
+  ggtitle("Annual Mean Water Temp vs Daily Mean Air Temp, USGS 1980-2022") +
+  theme_minimal() +
+  theme(text = element_text(size = 30))
+
+site_mean_plot
+
+# scatter plot, water temp to air temp, colored by month
+min_plot <- ggplot(annual.min,
+                     aes(x = min_wtr_temp,
+                         y = min_tmax..deg.c.),
+                     ) +
+  geom_point(
+    aes(color = site_code)
+  ) +
+  geom_abline(slope=1) +
+  ## geom_smooth(
+  ##   method = 'lm',
+  ##   se = FALSE,
+  ##   aes(color = site_code)
+  ## ) +
+  ## scale_color_manual(values = paris_metro) +
+  ylim(-15, 40) +
+  xlab("Annual Min Air Temperature") +
+  ylab("Annual Min Water Temperature") +
+  ggtitle("Annual Min Water Temp vs Daily Min Air Temp, USGS 1980-2022") +
+  theme_minimal() +
+  theme(text = element_text(size = 30))
+
+min_plot
 ```
