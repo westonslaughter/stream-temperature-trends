@@ -37,7 +37,7 @@ for(i in 1:nrow(usgs_info)){
                      names_to = 'var',
                      values_to = 'val')
     
-    write_feather(d, glue('temperature/data/daymet/{s}.feather',
+    write_feather(d, glue('data/daymet/{s}.feather',
                           s = usgs_info[i,2]))
     
     file.remove(temp_file)

@@ -38,7 +38,7 @@ for (state in state.abb) {
       print(paste("failed to load sites with temp data:", state))
     },
     finally = {
-      fp <- paste0("./data/sites/codes/", state, ".csv")
+      fp <- paste0("data/sites/codes/", state, ".csv")
       write.csv(sites, file = fp)
     }
   )

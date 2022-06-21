@@ -1,2 +1,12 @@
 # Thermodynamics Hypothesis Exploration
 
+```{r}
+library(dplyr)
+
+usgs_qt <- read.csv("data/wq.csv", colClasses = 'character')
+
+# combine wit hair temperature
+
+# make contours of air temp to water temp
+
+```
