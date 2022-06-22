@@ -8,17 +8,29 @@ We are using this data to explore stream and air temperature dynamics in our cha
 Q1: are streams getting warmer?
     - annual Mean Air Temp (MAT) Mean Water Temp (MWT) for each site record, w p-val and slope of trend
     
-Q2: is water temperature changing *linearly* with air temperature?
-    - air:water plots 1:1 line 
-      - if not linearly, then what is the relationship?
-    - compare distribution of equations, intercepts, slopes, R^2 of air:water by site 
-      - what does each part of the equation-of-best-fit mean? is it 
-         - y=mx+b or is it y = Ax^b
-    - visual geometry
-      - area of site-year distribution contour
-      - centroid of site-year distribution contour
-      - annual movement of site-year shape, centroid
-      - total site data contour shape and area  
+Q2: what is the relationship between water temperature and air temperature?
+    Q2a) SEASONALLY 
+        1) what is the general pattern
+            - air:water plots 1:1 line 
+            - compare distribution of equations, intercepts, slopes, R^2 of air:water by site 
+            - what does each part of the equation-of-best-fit mean? is it y=mx+b or is it y = Ax^b
+        2) are these patterns changing
+    Q2b) LONG TERM
+        1) what is the general pattern
+        2) are these patterns changing
+            - area of site-year distribution contour
+            - centroid of site-year distribution contour
+            - annual movement of site-year shape, centroid
+            - total site data contour shape and area
+            
+            
+TL;DR on ramble below, hypotheses:
+    H1) stream and air temp will decouple at the phase transition boundaries, 0C for freezing and 25C for beginning of ~"serious" evaporative cooling, in both instances showing a moderating effect on water vs air temp
+    H2) if the above is true, given increasing evidence that ice/snow cover is decreasing, and likely streams are spending more days above 25C, we will see increased air/wtr coupling in the winter (especially at sites with historical ice/snow cover) and decreased coupling in the spring/summer, especially in these same sites
+    
+ also thought: different water phase-temp regimes will exhibit different air-water relationships. sites with temps above freezing and below super-hot will show linear relationships. sites with high heats and low lows might show S-shaped relationships.    
+ 
+ also thought: shift towards higher air temps (and potentially other aggravating thermodynamic factors, see below) bc of climate change could drive proportionally lower water temps than in the past because of greater propensity to evaporate. this is particularly true if, even with air temps the same, the other characteristics that promote evaporation have changed -- which would show a marked downward tilt on the upper end of water-air temp relationships
 
 TD-Q: can the coupled/uncoupled air-water temperature dyanmics be understood (modelled? predicted?) through the thermodynamics (TD) of air and (moving) water
    - TD-idea-1: in a stream system, there is the coexistence of often large volumes of two different *phases* of water that are, in an arbitraily defined area of focus, experiencing the same radiative input -- how is this disequilibrium maintained? More to the point - air in the ecosystem is not experiencing phase change to the degree that water in the ecosystem is, can the uncoupling of air/water temp at-a-gauge be understood partially by how energy is processed by the two mediums in dif phases? for example, if this were the case then:
