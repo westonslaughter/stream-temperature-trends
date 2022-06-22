@@ -1,12 +1,43 @@
 # Thermodynamics Hypothesis Exploration
 
+
+We have gathered daily and continuous water temperature records from USGS gauges across the United States, filtering to stream sites with more than 30 years of data and site-years with greater than 80% of days accounted for.
+
+We are using this data to explore stream and air temperature dynamics in our changing climate, with a focus on the coupling or decoupling of air and stream temperature along seasonal patterns and long term trends -- rough questions and hypotheses as follows.
+
+Q1: are streams getting warmer?
+    - annual Mean Air Temp (MAT) Mean Water Temp (MWT) for each site record, w p-val and slope of trend
+    
+Q2: is water temperature changing *linearly* with air temperature?
+    - air:water plots 1:1 line 
+      - if not linearly, then what is the relationship?
+    - compare distribution of equations, intercepts, slopes, R^2 of air:water by site 
+      - what does each part of the equation-of-best-fit mean? is it 
+         - y=mx+b or is it y = Ax^b
+    - visual geometry
+      - area of site-year distribution contour
+      - centroid of site-year distribution contour
+      - annual movement of site-year shape, centroid
+      - total site data contour shape and area  
+
+TD-Q: can the coupled/uncoupled air-water temperature dyanmics be understood (modelled? predicted?) through the thermodynamics (TD) of air and (moving) water
+   - TD-idea-1: in a stream system, there is the coexistence of often large volumes of two different *phases* of water that are, in an arbitraily defined area of focus, experiencing the same radiative input -- how is this disequilibrium maintained? More to the point - air in the ecosystem is not experiencing phase change to the degree that water in the ecosystem is, can the uncoupling of air/water temp at-a-gauge be understood partially by how energy is processed by the two mediums in dif phases? for example, if this were the case then:
+   TD-idea-2: a typical stream is near constantly undergoing phase changes -- icing, thawing, evaporation -- and phase change converts heat not into temperature (sensible heat) but into **latent heat** which is the energy it takes to change states of matter, and is not measured by temperature. This is why water will stay at 0C until completely frozen, and stay at 100C until completely evaporated. It also means that a stream is often, during parts of the year where it is undergoing large-scale phase transitions, converting radiative heat into latent heat while the surrounding air is converting radiative heat into sensible heat (temperature). This gives us a testable hypothesis: air and water temperatures will de-couple porportional to the degree of solar energy a stream is devoting to phase change (while icing over, stream temps will stay at 0C while air temps will dip below 0C. while thawing, stream temps will stay at 0C while air temps rise above) 
+   TD-idea-3: evaporation is more complicated, because the stream is of course not reaching 100C (boiling point) so unlike the freezing point of water, streams do not in nature reach the boiling point of water. However, evaporation still occurs well below the boiling point of water, because the volume of water is being heated unevenly from the surface down. This means that streams will de-couple from air temps based on phase change in a more complicated way- one that is depndent on a particular streams natural predisposition to evaporation! Let us take a standard equation for evaporation of a volume of water:
+   
+  g(h) = 0A(x(s) - x)
+  
+  g(h) : amount of evaporated water per hour
+  0 : evaporation coefficient
+  v : velocity of air above water surface
+  A : water surface area
+  x(s) : maximum humidity ratio of saturated air at the same temperature as the water surface
+  x = humidity ratio of air
+  
+   
+
 ```{r}
 library(dplyr)
 
-usgs_qt <- read.csv("data/wq.csv", colClasses = 'character')
-
-# combine wit hair temperature
-
-# make contours of air temp to water temp
 
 ```

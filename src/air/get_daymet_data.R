@@ -10,14 +10,14 @@ library(feather)
 library(tidyverse)
 
 # Read in usgs
-usgs_info <- read.csv('data/usgs/site_info.csv', colClasses = 'character') 
+usgs_info <- read.csv('data/sites/sites_filtered_compiled.csv', colClasses = 'character')
 
 
 for(i in 1:nrow(usgs_info)){
     
     url_request <- glue('https://daymet.ornl.gov/single-pixel/api/data?lat={lat}&lon={long}&vars=tmax,tmin,srad,vp,swe,prcp,dayl&start=1980-01-01&end=2021-12-31',
-                        lat = usgs_info[i,7],
-                        long = usgs_info[i,8])
+                        lat = usgs_info$lat[i],
+                        long = usgs_info$long[i])
     
     temp_file <- tempfile(fileext = '.csv')
     download.file(url = url_request,
