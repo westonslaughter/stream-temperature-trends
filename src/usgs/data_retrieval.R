@@ -14,7 +14,8 @@ library(dataRetrieval)
 library(data.table)
 library(dplyr)
 
-source("./R/helpers.R")
+source("src/helpers.R")
+source("src/usgs/usgs_helpers.R")
 
 ## data retrieval
 # 'dv' temp data
@@ -43,10 +44,4 @@ stateRetrievalLoop(
   "./data/qw/disch/",
   varid = "00060",
   svc = "qw"
-)
-
-## site info retrieval
-stateInfoRetrievalLoop(
-  "./data/sites/codes/",
-  "./data/sites/info/"
 )

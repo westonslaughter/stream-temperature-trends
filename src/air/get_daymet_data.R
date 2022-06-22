@@ -10,14 +10,27 @@ library(feather)
 library(tidyverse)
 
 # Read in usgs
-usgs_info <- read.csv('data/usgs/site_info.csv', colClasses = 'character') 
+usgs_info <- read.csv('data/sites/sites_filtered_compiled.csv', colClasses = 'character')
 
+site_correct <- c()
+for(index in 1:nrow(usgs_info)) {
+  site <- usgs_info[index,]$site_code
 
+  if(nchar(site) == 7) {
+    site <- paste0("0", as.character(site))
+  }
+
+  site_correct <- c(site_correct, site)
+}
+
+usgs_info$site_code <- site_correct
+
+# retrieve daymet data for all sites
 for(i in 1:nrow(usgs_info)){
     
     url_request <- glue('https://daymet.ornl.gov/single-pixel/api/data?lat={lat}&lon={long}&vars=tmax,tmin,srad,vp,swe,prcp,dayl&start=1980-01-01&end=2021-12-31',
-                        lat = usgs_info[i,7],
-                        long = usgs_info[i,8])
+                        lat = usgs_info$lat[i],
+                        long = usgs_info$long[i])
     
     temp_file <- tempfile(fileext = '.csv')
     download.file(url = url_request,
@@ -37,8 +50,8 @@ for(i in 1:nrow(usgs_info)){
                      names_to = 'var',
                      values_to = 'val')
     
-    write_feather(d, glue('temperature/data/daymet/{s}.feather',
-                          s = usgs_info[i,2]))
+    write_feather(d, glue('data/daymet/{s}.feather',
+                          s = usgs_info[i,1]))
     
     file.remove(temp_file)
     
