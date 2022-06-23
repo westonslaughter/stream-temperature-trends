@@ -20,6 +20,7 @@ air_wtr <- air_wtr.raw %>%
   )
 
 # SPATIAL/hydrogeo attributes
+# watershed area
 usgs_attr.raw <- read.csv("data/sites/info_compiled.csv")
 usgs_attr <- usgs_attr.raw %>%
   select(
@@ -29,12 +30,19 @@ usgs_attr <- usgs_attr.raw %>%
     ws_area = drain_area_va
   )
 
-
 air_wtr <- air_wtr %>%
   merge(usgs_attr, by = 'site_code') %>%
   mutate(
     ws_area_log10 = log10(ws_area)
   )
+
+# ecoregion
+usgs_eco.raw <- read.csv("data/sites/sites_eco.csv")
+usgs_eco <- usgs_eco.raw %>%
+  select(site_code, ecoregion)
+
+air_wtr <- air_wtr %>%
+  merge(usgs_eco, by = 'site_code')
 
 # STATISTICAL attributes
 # standard dev
@@ -71,21 +79,25 @@ air_wtr <- air_wtr %>%
 ### DAILY
 ## MEANS
 # scatter plots
-scatter_func <- function(data, x, y, attr,  discrete = TRUE) {
+scatter_func <- function(data, x, y, attr,  discrete = TRUE, stat = "Mean") {
+  title <- paste0("Daily ", stat, " Water Temp vs Daily ", stat," Air Temp, USGS 1980-2022")
+  x_txt <- paste0('Daily ', stat, ' Air Temperature')
+  y_txt <- paste0('Daily ', stat, ' Water Temperature')
 
   plt <- ggplot(data,
          aes_string(x = x,
-             y = y)
-             ) +
+                    y = y,
+                    alpha = 0.5
+                    )) +
   geom_point(
     aes_string(color = attr)
   ) +
   geom_abline(slope=1) +
   scale_color_viridis(discrete = discrete, option = "plasma") +
   ylim(-15, 40) +
-  xlab("Daily Mean Air Temperature") +
-  ylab("Daily Mean Water Temperature") +
-  ggtitle("Daily Mean Water Temp vs Daily Mean Air Temp, USGS 1980-2022") +
+  xlab(x_txt) +
+  ylab(y_txt) +
+  ## ggtitle(title) +
   theme_minimal() +
   theme(text = element_text(size = 30))
 
@@ -94,51 +106,102 @@ scatter_func <- function(data, x, y, attr,  discrete = TRUE) {
 
 # TEMPORAL DISTRIBUTION
 # colored by year
-scatter_func(air_wtr, 'air_mean', 'wtr_mean', 'year')
+gg_yr <- scatter_func(air_wtr, 'air_mean', 'wtr_mean', 'year')
 ggsave("data/img/scatter/air_wtr_mean_dv_year.png")
 
 # colored by decade
-scatter_func(air_wtr, 'air_mean', 'wtr_mean', 'decade')
+gg_dec <- scatter_func(air_wtr, 'air_mean', 'wtr_mean', 'decade')
 ggsave("data/img/scatter/air_wtr_mean_dv_decade.png")
 
 # colored by month
-scatter_func(air_wtr, 'air_mean', 'wtr_mean', 'month')
+gg_mo <- scatter_func(air_wtr, 'air_mean', 'wtr_mean', 'month')
 ggsave("data/img/scatter/air_wtr_mean_dv_month.png")
 
-# STATISTICAL/CLIMATIC DISTRIBUTIONS
-# means
-# ppt
-scatter_func(air_wtr, 'air_mean', 'wtr_mean', 'total_ppt_mean', discrete = FALSE)
-ggsave("data/img/scatter/air_wtr_mean_dv_ppt_mean.png")
-
-# radiation
-scatter_func(air_wtr, 'air_mean', 'wtr_mean', 'total_radiation_mean', discrete = FALSE)
-ggsave("data/img/scatter/air_wtr_mean_dv_total_radiation_mean.png")
-
-# day length
-scatter_func(air_wtr, 'air_mean', 'wtr_mean', 'total_vp_mean', discrete = FALSE)
-ggsave("data/img/scatter/air_wtr_mean_dv_total_vp_mean.png")
-
-# snow
-scatter_func(air_wtr, 'air_mean', 'wtr_mean', 'total_snow_mean', discrete = FALSE)
-ggsave("data/img/scatter/air_wtr_mean_dv_total_snow_mean.png")
-
-# day length
-scatter_func(air_wtr, 'air_mean', 'wtr_mean', 'total_dl_mean', discrete = FALSE)
-ggsave("data/img/scatter/air_wtr_mean_dv_total_dl_mean.png")
+ggarrange(gg_mo, gg_yr, gg_dec,
+          ncol = 2, nrow = 2,
+          widths = c(0.5, 0.5),
+          heights = c(0.5, 0.5)
+          )
+ggsave("data/img/scatter/arranged/temporal_attributes_mean.png")
 
 # SPATIAL / HYDROGEOLOGICAL DISTRIBUTIONS
 # watershed area
-scatter_func(air_wtr, 'air_mean', 'wtr_mean', 'ws_area_log10', discrete = FALSE)
+gg_wa <- scatter_func(air_wtr, 'air_mean', 'wtr_mean', 'ws_area_log10', discrete = FALSE)
 ggsave("data/img/scatter/air_wtr_mean_dv_wsarealog10.png")
 
 # latitude
-scatter_func(air_wtr, 'air_mean', 'wtr_mean', 'lat', discrete = FALSE)
+gg_lat <- scatter_func(air_wtr, 'air_mean', 'wtr_mean', 'lat', discrete = FALSE)
 ggsave("data/img/scatter/air_wtr_mean_dv_latitude.png")
 
 # longitude
-scatter_func(air_wtr, 'air_mean', 'wtr_mean', 'long', discrete = FALSE)
+gg_long <- scatter_func(air_wtr, 'air_mean', 'wtr_mean', 'long', discrete = FALSE)
 ggsave("data/img/scatter/air_wtr_mean_dv_longitude.png")
 
 # ecoregion
+gg_eco <- scatter_func(air_wtr, 'air_mean', 'wtr_mean', 'ecoregion')
+ggsave("data/img/scatter/air_wtr_mean_dv_ecoregion.png")
 # hydraulic 'peak' season
+
+ggarrange(gg_wa, gg_lat, gg_long, gg_eco,
+          ncol = 2, nrow = 2,
+          widths = c(0.5, 0.5),
+          heights = c(0.5, 0.5)
+          )
+ggsave("data/img/scatter/arranged/spatial_attributes_mean.png")
+
+# STATISTICAL/CLIMATIC DISTRIBUTIONS
+# MEAN
+# ppt
+gg_ppt_mean <- scatter_func(air_wtr, 'air_mean', 'wtr_mean', 'total_ppt_mean', discrete = FALSE)
+ggsave("data/img/scatter/air_wtr_mean_dv_ppt_mean.png")
+
+# radiation
+gg_rad_mean <- scatter_func(air_wtr, 'air_mean', 'wtr_mean', 'total_radiation_mean', discrete = FALSE)
+ggsave("data/img/scatter/air_wtr_mean_dv_total_radiation_mean.png")
+
+# vapor pressure
+gg_vp_mean <- scatter_func(air_wtr, 'air_mean', 'wtr_mean', 'total_vp_mean', discrete = FALSE)
+ggsave("data/img/scatter/air_wtr_mean_dv_total_vp_mean.png")
+
+# snow
+gg_snow_mean <- scatter_func(air_wtr, 'air_mean', 'wtr_mean', 'total_snow_mean', discrete = FALSE)
+ggsave("data/img/scatter/air_wtr_mean_dv_total_snow_mean.png")
+
+# day length
+gg_dl_mean <- scatter_func(air_wtr, 'air_mean', 'wtr_mean', 'total_dl_mean', discrete = FALSE)
+ggsave("data/img/scatter/air_wtr_mean_dv_total_dl_mean.png")
+
+ggarrange(gg_ppt_mean, gg_rad_mean, gg_vp_mean, gg_snow_mean, gg_dl_mean,
+          ncol = 3, nrow = 2,
+          widths = c(0.5, 0.5),
+          heights = c(0.5, 0.5)
+          )
+ggsave("data/img/scatter/arranged/climate_attributes_mean.png")
+# MAX
+# ppt
+gg_ppt_max <- scatter_func(air_wtr, 'air_mean', 'wtr_mean', 'total_ppt_max', discrete = FALSE)
+ggsave("data/img/scatter/air_wtr_mean_dv_ppt_max.png")
+
+# radiation
+gg_rad_max <- scatter_func(air_wtr, 'air_mean', 'wtr_mean', 'total_radiation_max', discrete = FALSE)
+ggsave("data/img/scatter/air_wtr_mean_dv_total_radiation_max.png")
+
+# vapor pressure
+gg_vp_max <- scatter_func(air_wtr, 'air_mean', 'wtr_mean', 'total_vp_max', discrete = FALSE)
+ggsave("data/img/scatter/air_wtr_mean_dv_total_vp_max.png")
+
+# snow
+gg_snow_max <- scatter_func(air_wtr, 'air_mean', 'wtr_mean', 'total_snow_max', discrete = FALSE)
+ggsave("data/img/scatter/air_wtr_mean_dv_total_snow_max.png")
+
+# day length
+gg_dl_max <- scatter_func(air_wtr, 'air_mean', 'wtr_mean', 'total_dl_max', discrete = FALSE)
+ggsave("data/img/scatter/air_wtr_mean_dv_total_dl_max.png")
+
+ggarrange(gg_ppt_max, gg_rad_max, gg_vp_max, gg_snow_max, gg_dl_max,
+          ncol = 3, nrow = 2,
+          widths = c(0.5, 0.5),
+          heights = c(0.5, 0.5)
+          )
+ggsave("data/img/scatter/arranged/climate_attributes_max.png")
+
