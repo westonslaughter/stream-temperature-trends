@@ -40,7 +40,7 @@ for(i in 1:nrow(usgs_info)){
     
     d <- read.csv(temp_file, colClasses = 'numeric', skip = 7) %>%
         mutate(date = as.Date(yday, origin = paste0(year, '-01-01'))) %>%
-        mutate(site_code = usgs_info[i,2],
+        mutate(site_code = usgs_info[i,1],
                data_source = 'daymet') %>%
         select(date, site_code, dayl..s., prcp..mm.day., srad..W.m.2., swe..kg.m.2.,
                tmax..deg.c., tmin..deg.c., vp..Pa.) %>%

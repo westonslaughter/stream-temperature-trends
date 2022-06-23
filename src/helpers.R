@@ -15,7 +15,7 @@ fileCompiler <- function(listfiles) {
   for (file in listfiles) {
     tryCatch(
       expr = {
-          file_data <- fread(file)
+          file_data <- fread(file, colClasses = "character")
 
           if(!exists("all_df")) {
             all_df <- file_data

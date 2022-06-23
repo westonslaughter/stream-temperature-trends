@@ -68,6 +68,8 @@ TD-Q: can the coupled/uncoupled air-water temperature dyanmics be understood (mo
   - humidity ratio (DAYMET)
   
   
+  # running notes
+  - plots of variance! for example, plotting change in daily variance (max - min) in water vs air temp (is water having larger or smaller diel variations over time? is this trend the same with air?)
 
 ```{r}
 library(dplyr)
