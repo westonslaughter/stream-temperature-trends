@@ -29,7 +29,7 @@ dischfiles <- dir("./data/dv/disch", full.names = TRUE)
 disch <- stateCompiler(dischfiles)
 fwrite(disch, "./data/dv/disch_compiled.csv")
 
-# continuois (qw)
+# grab
 tempfiles <- dir("data/qw/temp", full.names = TRUE)
 temp <- fileCompiler(tempfiles)
 fwrite(temp, "data/compiled/temp_qw.csv")
