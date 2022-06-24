@@ -36,4 +36,4 @@ for(site in (sites)) {
 }
 
 wtr.smk <- wtr.smk[-1,]
-
+write.csv(wtr.smk, "data/derived/stats/mannkendall/smk_results.csv")
