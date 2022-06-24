@@ -1,3 +1,8 @@
+# NOTES
+- using daymet sets latest data we can use at 1980. Any way to reach further back? 
+- currently we are getting USGS sites that have temp AND discharge- is Q strictly necessary? 
+
+
 # Thermodynamics Hypothesis Exploration
 
 We have gathered daily and grab-sample water temperature records from USGS gauges across the United States, filtering to stream sites with more than 30 years of data and site-years with greater than 80% of days accounted for.
@@ -79,9 +84,3 @@ TD-Q: can the coupled/uncoupled air-water temperature dyanmics be understood (mo
   
   # running notes
   - plots of variance! for example, plotting change in daily variance (max - min) in water vs air temp (is water having larger or smaller diel variations over time? is this trend the same with air?)
-
-```{r}
-library(dplyr)
-
-
-```

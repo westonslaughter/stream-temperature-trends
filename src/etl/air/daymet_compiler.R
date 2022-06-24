@@ -1,8 +1,9 @@
-source("src/helpers.R")
+source("src/etl/etl_helpers.R")
 library(dplyr)
+library(tidyr)
 library(feather)
 
-daymet_files <- list.files("data/daymet", full.names = TRUE)
+daymet_files <- list.files("data/raw/dv/air/daymet", full.names = TRUE)
 daymet_data <- featherCompiler(daymet_files)
 
 # wide form, by var
@@ -12,4 +13,4 @@ daymet_df <- daymet_data %>%
               values_from = val)
 
 # save wide df
-write_feather(daymet_df, "data/compiled/daymet.feather")
+write_feather(daymet_df, "data/munged/dv/air/daymet_compiled.feather")
