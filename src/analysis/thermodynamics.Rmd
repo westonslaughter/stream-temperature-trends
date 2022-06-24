@@ -1,11 +1,19 @@
 # Thermodynamics Hypothesis Exploration
 
-We have gathered daily and continuous water temperature records from USGS gauges across the United States, filtering to stream sites with more than 30 years of data and site-years with greater than 80% of days accounted for.
+We have gathered daily and grab-sample water temperature records from USGS gauges across the United States, filtering to stream sites with more than 30 years of data and site-years with greater than 80% of days accounted for.
+
+NOTE: what to do for grab samples?
 
 We are using this data to explore stream and air temperature dynamics in our changing climate, with a focus on the coupling or decoupling of air and stream temperature along seasonal patterns and long term trends -- rough questions and hypotheses as follows.
 
 Q1: are streams getting warmer?
-    - annual Mean Air Temp (MAT) Mean Water Temp (MWT) for each site record, w p-val and slope of trend
+    Q1a: overall trends (trend analysis)
+        - annual Mean Air Temp (MAT) Mean Water Temp (MWT) for each site record, w p-val and slope of trend
+        - SMK for daily records (by site) *plotting sen-slopes for all sites against climate statistical attributes?
+        - MK for MAT and other annual temp stats
+    Q1b: trends in variance
+        - geometric (i.e. countour) analysis
+        - time series plots of air and water temp Mean Annual Variance (from Z-score)
     
 Q2: what is the relationship between water temperature and air temperature?
     Q2a) SEASONALLY 
@@ -24,7 +32,7 @@ Q2: what is the relationship between water temperature and air temperature?
             
             
 TL;DR on ramble below, hypotheses:
-    H1) stream and air temp will decouple at the phase transition boundaries, 0C for freezing and 25C for beginning of ~"serious" evaporative cooling, in both instances showing a moderating effect on water vs air temp
+    H1) stream and air temp will decouple at the phase transition boundaries, 0C for freezing and 25C for beginning of ~"serious" evaporative cooling, in both instances showing a moderating effect on water vs air temp (https://i.stack.imgur.com/a3MRh.png)
     H2) if the above is true, given increasing evidence that ice/snow cover is decreasing, and likely streams are spending more days above 25C, we will see increased air/wtr coupling in the winter (especially at sites with historical ice/snow cover) and decreased coupling in the spring/summer, especially in these same sites
     
  also thought: different water phase-temp regimes will exhibit different air-water relationships. sites with temps above freezing and below super-hot will show linear relationships. sites with high heats and low lows might show S-shaped relationships.    
@@ -33,7 +41,7 @@ TL;DR on ramble below, hypotheses:
 
 TD-Q: can the coupled/uncoupled air-water temperature dyanmics be understood (modelled? predicted?) through the thermodynamics (TD) of air and (moving) water
    - TD-idea-1: in a stream system, there is the coexistence of often large volumes of two different *phases* of water that are, in an arbitraily defined area of focus, experiencing the same radiative input -- how is this disequilibrium maintained? More to the point - air in the ecosystem is not experiencing phase change to the degree that water in the ecosystem is, can the uncoupling of air/water temp at-a-gauge be understood partially by how energy is processed by the two mediums in dif phases? for example, if this were the case then:
-   TD-idea-2: a typical stream is near constantly undergoing phase changes -- icing, thawing, evaporation -- and phase change converts heat not into temperature (sensible heat) but into **latent heat** which is the energy it takes to change states of matter, and is not measured by temperature. This is why water will stay at 0C until completely frozen, and stay at 100C until completely evaporated. It also means that a stream is often, during parts of the year where it is undergoing large-scale phase transitions, converting radiative heat into latent heat while the surrounding air is converting radiative heat into sensible heat (temperature). This gives us a testable hypothesis: air and water temperatures will de-couple porportional to the degree of solar energy a stream is devoting to phase change (while icing over, stream temps will stay at 0C while air temps will dip below 0C. while thawing, stream temps will stay at 0C while air temps rise above) 
+   TD-idea-2: a typical stream is near constantly undergoing phase changes -- icing, thawing, evaporation -- and phase change converts heat not into temperature (**sensible heat**) but into **latent heat** which is the energy it takes to change states of matter, and is not measured by temperature. This is why water will stay at 0C until completely frozen, and stay at 100C until completely evaporated. It also means that a stream is often, during parts of the year where it is undergoing large-scale phase transitions, converting radiative heat into latent heat while the surrounding air is converting radiative heat into sensible heat (temperature). This gives us a testable hypothesis: air and water temperatures will de-couple porportional to the degree of solar energy a stream is devoting to phase change (while icing over, stream temps will stay at 0C while air temps will dip below 0C. while thawing, stream temps will stay at 0C while air temps rise above) 
    
    FREEZING/THAWING
    - we are not 'measureing' temperature after the phase change to ice (?) but, it could be useful to pair air temperatures during the ice phase of a gauged stream with some kind of snow/ice data
