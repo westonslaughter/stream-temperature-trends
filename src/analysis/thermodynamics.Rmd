@@ -60,6 +60,7 @@ TD-Q: can the coupled/uncoupled air-water temperature dyanmics be understood (mo
   x(s): calculated as the humidity ratio of air if it was fully saturated and at the water temp)
   x: is the ratio of the mass of water vapor to mass of dry air (or partial pressure of water vapor to p.p. of dry air) (already have water vapor form daymet) other data: https://www.climatologylab.org/gridmet.html calc: https://www.engineeringtoolbox.com/humidity-ratio-air-d_686.html
   
+  TD-idea-4: streams not heating in hot places? losing water volume -- maybe even lots of it. how can we estimate water volume loss due to evaporation... what about, in diel cycles of streamflow, we tak the difference between peak daytime flow and peak night time flow, and subtract from that the difference between peak daytime flow on d1 and peak daytime flow on d2 to account for normal streamflow recession. the remaining dif between day and night flows is likely due primarily to evaporation (see image of colorado gunnison streamflow recession in img/)
   
   summary of data indictaed by this formula and what we can get that might work:
   

@@ -1,5 +1,6 @@
 # script going thru our intro questions sequentially and addressing with stats and plots
 library(dplyr)
+library(tidyr)
 library(data.table)
 library(feather)
 library(lubridate)
@@ -21,7 +22,8 @@ daymet <- daymet.raw %>%
   )
 
 # USGS
-usgs.raw <- fread("data/compiled/temp_qw.csv", colClasses = "character")
+## usgs.raw <- fread("data/compiled/temp_qw.csv", colClasses = "character")
+usgs.raw <- fread("data/dv/temp_compiled.csv", colClasses = "character")
 
 # continuous
 usgs <- usgs.raw %>%
