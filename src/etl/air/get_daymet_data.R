@@ -8,22 +8,35 @@ library(sf)
 library(glue)
 library(feather)
 library(tidyverse)
+source("src/etl/etl_helpers.R")
 
 # Read in usgs
-usgs_info <- read.csv('data/sites/sites_filtered_compiled.csv', colClasses = 'character')
 
-site_correct <- c()
-for(index in 1:nrow(usgs_info)) {
-  site <- usgs_info[index,]$site_code
+sitecodeCompiler <- function(fp) {
+  site_matrix <- data.frame(matrix(ncol = 3, nrow = 1))
+  colnames(site_matrix) <- c('site_code', 'lat', 'long')
+  fp_list <- list.files(fp, full.names = TRUE)
 
-  if(nchar(site) == 7) {
-    site <- paste0("0", as.character(site))
+  for(file in fp_list) {
+    file_data <- read.csv(file, colClasses = 'character')
+
+    file_matrix <- data.frame(matrix(ncol = 3, nrow = nrow(file_data)))
+    colnames(file_matrix) <- c('site_code', 'lat', 'long')
+
+    file_matrix$site_code <- file_data$site_no
+    file_matrix$lat <- file_data$dec_lat_va
+    file_matrix$long <- file_data$dec_long_va
+
+    site_matrix <- rbind(site_matrix, file_matrix)
+    print(paste('loaded in site codes from', file))
   }
 
-  site_correct <- c(site_correct, site)
+  print(paste("total sites:", nrow(site_matrix)))
+  return(site_matrix)
 }
 
-usgs_info$site_code <- site_correct
+usgs_info <- sitecodeCompiler('data/munged/sites/codes/')[-1,]
+## usgs_info <- sites
 
 # retrieve daymet data for all sites
 for(i in 1:nrow(usgs_info)){
@@ -40,7 +53,7 @@ for(i in 1:nrow(usgs_info)){
     
     d <- read.csv(temp_file, colClasses = 'numeric', skip = 7) %>%
         mutate(date = as.Date(yday, origin = paste0(year, '-01-01'))) %>%
-        mutate(site_code = usgs_info[i,1],
+        mutate(site_code = usgs_info$site_code[i],
                data_source = 'daymet') %>%
         select(date, site_code, dayl..s., prcp..mm.day., srad..W.m.2., swe..kg.m.2.,
                tmax..deg.c., tmin..deg.c., vp..Pa.) %>%
@@ -50,9 +63,12 @@ for(i in 1:nrow(usgs_info)){
                      names_to = 'var',
                      values_to = 'val')
     
-    write_feather(d, glue('data/daymet/{s}.feather',
+    write_feather(d, glue('data/raw/dv/air/daymet/{s}.feather',
                           s = usgs_info[i,1]))
     
     file.remove(temp_file)
     
 }
+
+# check things
+## length(list.files('data/raw/dv/air/daymet/'))

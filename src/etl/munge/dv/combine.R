@@ -3,8 +3,8 @@ library(dplyr)
 library(feather)
 
 # pull in compiled raw data
-air.daymet <- read_feather("data/munged/dv/air/daymet_compiled.feather")
-wtr.usgs <- read_feather("data/munged/dv/wtr/usgs_compiled.feather")
+air.daymet <- read_feather("data/munged/dv/air/focal_daymet_compiled.feather")
+wtr.usgs <- read_feather("data/munged/dv/wtr/focal_usgs_compiled.feather")
 
 # pare down and filter
 air.daymet <- air.daymet %>%
@@ -18,6 +18,9 @@ air.daymet <- air.daymet %>%
     air.tmax = tmax..deg.c.,
     air.tmin = tmin..deg.c.,
     vapor = vp..Pa.
+  ) %>%
+  mutate(
+    air.tmean = air.tmax - air.tmin/2
   )
 
 wtr.usgs <- wtr.usgs %>%
@@ -40,16 +43,4 @@ air.wtr <- merge(wtr.usgs,
                  air.daymet,
                  by = c('site_code', 'date'))
 
-air.wtr <- air.wtr %>%
-  ## rename(
-  ##   wtr.tmax =  tmax.x,
-  ##   wtr.tmin =  tmin.x,
-  ##   wtr.tmean = tmean,
-  ##   air.tmax =  tmax.y,
-  ##   air.tmin =  tmin.y
-  ## ) %>%
-  mutate(
-    air.tmean = air.tmax - air.tmin/2
-  )
-
-write_feather(air.wtr, "data/munged/dv/combined/air_wtr.feather")
+write_feather(air.wtr, "data/munged/dv/combined/focal_air_wtr.feather")

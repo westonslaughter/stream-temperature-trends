@@ -14,8 +14,7 @@ library(dataRetrieval)
 library(dplyr)
 library(data.table)
 
-source("src/helpers.R")
-source("src/usgs/usgs_helpers.R")
+source("src/etl/etl_helpers.R")
 
 
 ## site info retrieval

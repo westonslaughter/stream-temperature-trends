@@ -9,19 +9,19 @@
 ## Date Created: 2022-04-11
 ##
 ## ---------------------------
-
 library(dataRetrieval)
 library(data.table)
 library(dplyr)
 
-source("src/helpers.R")
-source("src/usgs/usgs_helpers.R")
+source("src/etl/etl_helpers.R")
+source('src/etl/wtr/usgs/usgs_helpers.R')
 
 ## data retrieval
 # 'dv' temp data
 stateRetrievalLoop(
-  "./data/sites/codes/",
-  "./data/dv/temp/"
+  readpath = "./data/munged/sites/codes/",
+  writepath = "./data/raw/dv/wtr/",
+  site_filter = unique(sites$site_code)
 )
 
 # 'dv' disch data

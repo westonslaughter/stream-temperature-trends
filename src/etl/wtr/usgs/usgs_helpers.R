@@ -11,7 +11,8 @@
 ## ---------------------------
 
 
-stateRetrievalLoop <- function(readpath, writepath, varid = "00010", svc = "dv", type="ST") {
+stateRetrievalLoop <- function(readpath, writepath, varid = "00010",
+                               svc = "dv", type="ST", site_filter = c()) {
   print(paste("USGS data retrieval:", varid))
 
   for (state in state.abb) {
@@ -30,11 +31,20 @@ stateRetrievalLoop <- function(readpath, writepath, varid = "00010", svc = "dv",
           filter(data_type_cd %in% svc) %>%
           filter(site_tp_cd %in% type)
 
-
         if(nrow(df) == 0) {
           print(paste("---- WARNING:", state, "input CSV is empty"))
         } else {
           codes <- unique(df$site_no)
+
+          if(length(site_filter) > 0) {
+            codes <- intersect(codes, site_filter)
+
+            if(length(codes) == 0) {
+              print('no sites from user-specified filter present in this record')
+              next
+            }
+          }
+
 
           # get dates for site
           begin <- min(df$begin_date)
@@ -60,19 +70,19 @@ stateRetrievalLoop <- function(readpath, writepath, varid = "00010", svc = "dv",
             )
           }
 
-          # save to wrtiepath
-          write.csv(info, wp)
+          if(!exists('info')) {
+            print('sites not found in this state')
+          } else if(nrow(info) < 1) {
+            print(paste("------ results empty:", state, "    ", varid))
+          } else {
+            # save to wrtiepath
+            write.csv(info, wp)
+          }
         }
         print(paste0("---- ", state, ": DONE"))
       },
       error = function(e) {
         print(paste("---- ERROR:", state))
-      },
-      finally = {
-        # if df empty
-        if(nrow(info) < 1) {
-          print(paste("------ results empty:", state, "    ", varid))
-        }
       }
     )
   }

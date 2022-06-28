@@ -11,8 +11,8 @@
 ## ---------------------------
 
 # bring in usgs site info
-usgs_info <- read.csv("data/sites/info_compiled.csv", colClasses = 'character')
-usgs_sites <- read.csv("data/sites/sites_compiled.csv", colClasses = 'character')
+usgs_info <- read_feather("data/munged/sites/info_compiled.feather")
+usgs_sites <- read_feather("data/munged/sites/sites_compiled.feather")
 
 # merge
 usgs_i <- merge(usgs_info, usgs_sites, by = "site_no")
@@ -36,15 +36,18 @@ usgs <- usgs_i %>%
          count_nu,
          period)
 
-## fwrite(usgs, "./data/sites/sites_select_compiled.csv")
+## fwrite(usgs, "./data/munged/sites/sites_select_compiled.csv")
 
 # filter by:
 # 30 yrs
-yr_days <- 30 * 365
+min_yrs <- 40 * 365
 # >80% coverage
-yr80p <- 365 * 0.8
+min_obs <- 0.8
 
-usgs_f <- usgs %>%
+# we have both TEMP and DISCH site records - must filter
+## for sites w *both*  records passig muster
+usgs_temp <- usgs %>%
+  filter(parm_cd == "00010") %>%
   mutate(
     period = as.integer(period),
     count_nu = as.integer(count_nu),
@@ -52,11 +55,28 @@ usgs_f <- usgs %>%
   ) %>%
   filter(
     site_type == "ST",
-    period > yr_days,
-    mean_n > 0.8
+    period > min_yrs,
+    mean_n > min_obs
   )
 
-## fwrite(usgs_f, "./data/sites/sites_filtered_compiled.csv")
+usgs_q <- usgs %>%
+  filter(parm_cd == "00060") %>%
+  mutate(
+    period = as.integer(period),
+    count_nu = as.integer(count_nu),
+    mean_n = count_nu/period
+  ) %>%
+  filter(
+    site_type == "ST",
+    period > min_yrs,
+    mean_n > min_obs
+  )
+
+usgs_f <- usgs_temp %>%
+  filter(site_code %in% usgs_q$site_code)
+
+# focal sites for long term daily value analysis
+## fwrite(usgs_f, "./data/munged/sites/sites_dv_filtered_compiled.csv")
 
 # get uv sites
 usgs_uv <- usgs_f %>%
@@ -67,3 +87,15 @@ fwrite(usgs_uv, "./data/sites/sites_filtered_uv.csv")
 usgs_dv <- usgs_f %>%
   filter(data_type == "dv")
 fwrite(usgs, "./data/sites/sites_filtered_dv.csv")
+
+# site overlap
+uv_sites <- unique(usgs_uv$site_code)
+dv_sites <- unique(usgs_dv$site_code)
+
+cross_sites <- uv_sites[uv_sites %in% dv_sites]
+
+# focal sites
+usgs_cross <- usgs_f %>%
+  filter(site_code %in% cross_sites)
+
+## fwrite(usgs_cross, "./data/munged/sites/focal_sites_compiled.csv")

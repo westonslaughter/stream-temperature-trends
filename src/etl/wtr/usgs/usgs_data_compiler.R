@@ -38,11 +38,3 @@ dischfiles <- dir("data/qw/disch", full.names = TRUE)
 disch <- stateCompiler(dischfiles)
 write_feather(disch, "./data/dv/disch_compiled.feather")
 
-# sites
-infofiles <- dir("./data/sites/info", full.names = TRUE)
-info <- fileCompiler(infofiles)
-## write_feather(info, "./data/sites/info_compiled.feather")
-
-sitefiles <- dir("./data/sites/codes", full.names = TRUE)
-sites <- fileCompiler(sitefiles)
-## write_feather(sites, "./data/sites/sites_compiled.feather")

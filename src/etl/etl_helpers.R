@@ -10,12 +10,24 @@
 ##
 ## ---------------------------
 
-
-fileCompiler <- function(listfiles, f = "data/munged/dv/wtr/usgs_compiled.feather") {
-  for (file in listfiles) {
+fileCompiler <- function(fp, site_filter = c()) {
+  flist <- list.files(fp, full.names = TRUE)
+  for (file in flist) {
     tryCatch(
       expr = {
           file_data <- fread(file, colClasses = "character")
+
+          if(length(site_filter) > 0) {
+            tryCatch(
+              expr = {
+                file_data <- file_data %>%
+                  filter(site_no %in% site_filter)
+              },
+              error = function(e) {
+                print(paste(file, '/n----- ERROR'))
+              }
+            )
+          }
 
           if(!exists("all_df")) {
             all_df <- file_data
@@ -26,8 +38,8 @@ fileCompiler <- function(listfiles, f = "data/munged/dv/wtr/usgs_compiled.feathe
             print(paste("DONE:", file))
           }
 
-          print('______ overwriting feather with new state data')
-          write_feather(all_df, f)
+          ## print('______ overwriting feather with new state data')
+          ## write_feather(all_df, f)
         },
       error = function(e) {
         print(paste("---- ERROR:", file))
@@ -37,29 +49,35 @@ fileCompiler <- function(listfiles, f = "data/munged/dv/wtr/usgs_compiled.feathe
   return(all_df)
 }
 
-featherCompiler <- function(listfiles) {
-  for (file in listfiles) {
-    tryCatch(
-      expr = {
-          file_data <- read_feather(file)
 
-          if(!exists("all_df")) {
-            all_df <- file_data
-            print("__ CREATING DATAFRAME __")
-            print(paste("DONE:", file))
-          } else {
-            all_df <- rbind(all_df, file_data)
-            print(paste("DONE:", file))
+featherCompiler <- function(fp, site_filter = c()) {
+  flist <- list.files(fp, full.names = TRUE)
+
+  for (file in flist) {
+    filter_test <- stri_detect_fixed(file, site_filter)
+
+    if(TRUE %in% filter_test) {
+      tryCatch(
+        expr = {
+            file_data <- read_feather(file)
+
+            if(!exists("all_df")) {
+              all_df <- file_data
+              print("__ CREATING DATAFRAME __")
+              print(paste("DONE:", file))
+            } else {
+              all_df <- rbind(all_df, file_data)
+              print(paste("DONE:", file))
+            }
+          },
+        error = function(e) {
+          print(paste("---- ERROR:", file))
           }
-        },
-      error = function(e) {
-        print(paste("---- ERROR:", file))
-        }
-    )
+      )
+    }
   }
   return(all_df)
 }
-
 
 stateRetrievalLoop <- function(readpath, writepath, varid = "00010", svc = "dv", type="ST") {
   print(paste("USGS data retrieval:", varid))
@@ -170,3 +188,50 @@ stateInfoRetrievalLoop <- function(readpath, writepath) {
     )
   }
 }
+
+## stateInfoRetrievalLoop <- function(readpath, writepath, site_filter = c()) {
+##   print("USGS site info retrieval")
+
+##   for (state in state.abb) {
+##     print(paste("-- attempting info pull", state))
+
+##     tryCatch(
+##       expr = {
+##         rp <- paste0(readpath, state, ".csv")
+##         wp <- paste0(writepath, state, "_info.csv")
+
+##         # read in CSV
+##         df <- fread(rp, colClasses=c("character"))
+
+##         if(nrow(df) == 0) {
+##           print(paste("---- WARNING:", state, "input CSV is empty"))
+##         } else {
+##           codes <- unique(df$site_no)
+
+##           if(length(site_filter) < 1) {
+##             site_filter <- codes
+##           }
+
+##           if(TRUE %in% (codes %in% site_filter)) {
+##             site_info <- readNWISsite(
+##               siteNumbers = codes
+##             )
+
+##             # save to writepath
+##             write.csv(site_info, wp)
+##           }
+##         }
+##         print(paste0("---- ", state, ": DONE"))
+##       },
+##       error = function(e) {
+##         print(paste("---- ERROR:", state))
+##       },
+##       finally = {
+##         # if df empty
+##         if(nrow(site_info) < 1) {
+##           print(paste("------ results empty:", state, "    ", varid))
+##         }
+##       }
+##     )
+##   }
+## }
