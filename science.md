@@ -1,6 +1,25 @@
 # NOTES
-- using daymet sets latest data we can use at 1980. Any way to reach further back? 
-- currently we are getting USGS sites that have temp AND discharge- is Q strictly necessary? 
+- Sites
+  - currently, long term daily data from USGS that has > 40 years of temp and discharge, leaves us with 12 sites. 
+  - some of these sites go well before 1980 (where Daymet starts) begging the question- should we retrieve a product that goes further back?
+  - if we are not, currently and in many of our analyses, using Q data -- should we maybe drop it is a requirement? this would maybe open up more site temp records
+  - MacroSheds has a few sites with good temp records. lets take those.
+  - Sleeper and other potential MS additions have temp data. let's get those too.
+  - the 12 dv sites mentioned above do not have overlap with continuous records which meet oru needs (our needs prevlude continous records to some degree, as these start after 1980?)
+
+- science
+  - in scatterplots made from long term daily data, I think there is some super interesting stuff
+    - seems like while the *shape* of the air-wtr temp ratio distribution at sites seems interesetingly stable, the size seems to be notably shrinking 
+      - ![image](doc/fig/scatter/dv_longterm_airwtr_mean_facetsite_colyr.png)
+      - ![image](doc/fig/scatter/dv_longterm_airwtr_min_facetsite_colyr.png)
+      - ![image](doc/fig/scatter/dv_longterm_airwtr_max_facetsite_colyr.png)
+      - AND this seems to be holding *across metrics* (mean, max, min) 
+  - however, on plotting by time series of daily air-wtr ratios, as well as annual and seasonal summaries of daily ratios, we see **distinct seasonal cycles of air-wtr ratio** but, no super clear strong trend (though, linear regression shows mean air-wtr significantly increasing across most sites, just not by a wild amount). also, of note, very interesting where the extreme outliers do and dont show up across sites, and particularly seasons 
+      - ![image](doc/fig/ts/airwtr/dv_longterm_airwtr_mean_facetsite.png)
+      - ![image](doc/fig/ts/airwtr/dv_longterm_wtr_annualtmean_facetsite.png)
+      - ![image](doc/fig/ts/airwtr/dv_longterm_airwtr_seasonmean_facetseason.png)
+      - ![image](doc/fig/ts/airwtr/dv_longterm_airwtr_seasonmin_facetseason.png)
+      - ![image](doc/fig/ts/airwtr/dv_longterm_airwtr_seasonmax_facetseason.png)
 
 
 # Thermodynamics Hypothesis Exploration

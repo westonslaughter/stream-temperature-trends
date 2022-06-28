@@ -3,8 +3,12 @@ library(dplyr)
 library(feather)
 
 # pull in compiled raw data
-air.daymet <- read_feather("data/munged/dv/air/focal_daymet_compiled.feather")
-wtr.usgs <- read_feather("data/munged/dv/wtr/focal_usgs_compiled.feather")
+## air.daymet <- read_feather("data/munged/dv/air/focal_daymet_compiled.feather")
+## wtr.usgs <- read_feather("data/munged/dv/wtr/focal_usgs_compiled.feather")
+
+# pull in long term dv
+air.daymet <- read_feather("data/munged/dv/air/dv_longterm_daymet_compiled.feather")
+wtr.usgs <- read_feather("data/munged/dv/wtr/dv_longterm_usgs_compiled.feather")
 
 # pare down and filter
 air.daymet <- air.daymet %>%
@@ -43,4 +47,4 @@ air.wtr <- merge(wtr.usgs,
                  air.daymet,
                  by = c('site_code', 'date'))
 
-write_feather(air.wtr, "data/munged/dv/combined/focal_air_wtr.feather")
+write_feather(air.wtr, "data/munged/dv/combined/dv_longterm_air_wtr.feather")
