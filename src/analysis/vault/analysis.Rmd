@@ -1,0 +1,505 @@
+----
+title: "plots of annual temperature summaries, USGS"
+output:
+  html_document:
+    toc: true
+    theme: united
+---- 
+
+# Basic Analysis
+how are Annual Mean (and Min/Max) stream and air temperatures changing over time? and, what is the relationship between stream and air temperature change?
+
+```{r}
+
+library(dplyr)
+library(feather)
+library(ggplot2)
+library(RColorBrewer)
+library(viridis)
+library(plotly)
+library(Kendall)
+source("./src/helpers.R")
+
+# load in USGS-Daymet data
+daily <- read_feather("./data/usgs_daymet_all.feather")
+annual <- read_feather("./data/summary/annual_temp_z.feather")
+
+# sites with > 40 years
+site_n <- annual %>%
+  group_by(site_code) %>%
+  summarise(n = n()) %>%
+  filter(n > 40)
+
+# for adding to df for plotting
+pmap <- function(v) {
+  pvals <- c()
+  for(x in v) {
+    if(x <= 0.05) {
+      pvals <- c(pvals, 'significant')
+    } else {
+      pvals <- c(pvals, 'non-significant')
+    }
+  }
+  return(pvals)
+}
+
+slopemap <- function(v) {
+  slopes <- c()
+  for(x in v) {
+    if(x > 1) {
+      slopes <- c(slopes, 'positive')
+    } else if(x < 1){
+      slopes <- c(slopes, 'negative')
+    } else {
+      slopes <- c(slopes, 'zero')
+    }
+  }
+  return(slopes)
+}
+
+```
+
+## Annual Trend Analsysis
+let's look at plots of the Mean, Min, and Max Annual temps.
+
+We can also look at the same data transformed to Z-score (a metric of the distance of a particular point to it's dataset mean, values between -x and x, with 0 representing the perfect mean, and -x and x representing x standard deviations below and above the mean respectively), in this way normalizing all site data to itself to facilitate mroe direct comparison of temperature chamge/deviation between sites.
+
+### mean
+
+lets filter the data to only site with > 40 year records, before 2022, and, lets calculate the p-values of regressions fit to the relationship between a site's meanimum temperature and the year
+
+```{r}
+# keep only records > certain period of years
+annual.mean <- annual %>%
+  filter(year < 2022) %>%
+  filter(site_code %in% site_n$site_code)
+
+# set infinite values to NA
+annual.mean$mean_wtr_air_ratio[is.infinite(annual.mean$mean_wtr_air_ratio)] <- NA
+# remove NA
+annual.mean <- annual.mean %>%
+  select(site_code, year, mean_wtr_temp, mean_mean_air_temp, mean_wtr_air_ratio) %>%
+  tidyr::drop_na()
+
+
+# singificane and slope testing
+# Determeane p-values of regression
+p.vals = sapply(unique(annual.mean$site_code), function(i) {
+  coef(summary(lm(year ~ mean_wtr_temp, data=annual.mean[annual.mean$site_code==i, ])))[2,4]
+})
+
+slope.vals = sapply(unique(annual.mean$site_code), function(i) {
+  coef(summary(lm(year ~ mean_wtr_temp, data=annual.mean[annual.mean$site_code==i, ])))[2,1]
+})
+
+# do same for ratio
+ratio.p.vals = sapply(unique(annual.mean$site_code), function(i) {
+  coef(summary(lm(year ~ mean_wtr_air_ratio, data=annual.mean[annual.mean$site_code==i, ])))[2,4]
+})
+
+ratio.slope.vals = sapply(unique(annual.mean$site_code), function(i) {
+  coef(summary(lm(year ~ mean_wtr_air_ratio, data=annual.mean[annual.mean$site_code==i, ])))[2,1]
+})
+
+annual.mean <- annual.mean %>%
+  mutate(
+    pval = p.vals[site_code],
+    pcat = pmap(pval),
+    slope = slope.vals[site_code],
+    slopecat = slopemap(slope),
+    # ratio
+    ratio.pval = ratio.p.vals[site_code],
+    ratio.pcat = pmap(ratio.pval),
+    ratio.slope = ratio.slope.vals[site_code],
+    ratio.slopecat = slopemap(ratio.slope)
+  )
+
+
+
+wtr_mean_plot <- ggplotly(
+      ggplot(annual.mean, aes(x=year, y=mean_wtr_temp, group=site_code)) +
+      geom_point(aes(color = site_code)) +
+      geom_smooth(
+        data=annual.mean,
+        aes(year, mean_wtr_temp, colour=site_code),
+        method='lm',
+        se = FALSE
+      ) +
+      xlab("Year") +
+      ggtitle("Annual Mean Water Temperatures Across USGS Sites") +
+      theme_minimal() +
+      theme(text = element_text(size = 30)) +
+      facet_wrap(~ slopecat + pcat) +
+      scale_x_discrete(breaks = unique(annual.mean$year)[seq(1, 50, 10)])
+)
+  
+print(wtr_mean_plot)
+
+air_mean_plot <- ggplotly(
+      ggplot(annual.mean, aes(x=year, y=mean_mean_air_temp, group=site_code)) +
+      geom_point(aes(color = site_code)) +
+      geom_smooth(
+        data=annual.mean,
+        aes(year, mean_mean_air_temp, colour=site_code),
+        method='lm',
+        se = FALSE
+      ) +
+      xlab("Year") +
+      ggtitle("Annual Mean Air Temperatures Across USGS Sites") +
+      theme_minimal() +
+      theme(text = element_text(size = 30)) +
+      facet_wrap(~ slopecat + pcat) +
+      scale_x_discrete(breaks = unique(annual.mean$year)[seq(1, 50, 10)])
+)
+  
+print(air_mean_plot)
+
+combo_mean_plot <- ggplotly(
+      ggplot(annual.mean, aes(x=year, group=site_code)) +
+      ## geom_point(aes(color = site_code)) +
+      geom_smooth(
+        data=annual.mean,
+        aes(year, mean_wtr_temp, colour=site_code),
+        method='lm',
+        se = FALSE
+      ) +
+      geom_smooth(
+        data=annual.mean,
+        aes(year, y=mean_mean_air_temp, colour=site_code),
+        method='lm',
+        se = FALSE,
+        linetype = "dashed"
+      ) +
+      xlab("Year") +
+      ggtitle("Annual Mean Air and Water Temperatures Across USGS Sites") +
+      theme_minimal() +
+      theme(text = element_text(size = 30)) +
+      ## facet_wrap(~ slopecat + pcat) +
+      scale_x_discrete(breaks = unique(annual.mean$year)[seq(1, 50, 10)])
+)
+  
+print(combo_mean_plot)
+
+# water:air temp ratio
+ratio_mean_plot <- ggplotly(
+      ggplot(annual.mean, aes(x=year, y=mean_wtr_air_ratio, group=site_code)) +
+      geom_point(aes(color = site_code)) +
+      geom_smooth(
+        data=annual.mean,
+        aes(year, mean_wtr_air_ratio, colour=site_code),
+        method='lm',
+        se = FALSE
+      ) +
+      xlab("Year") +
+      ggtitle("Annual Mean of Water:Air Temperature Ratio Across USGS Sites") +
+      theme_minimal() +
+      theme(text = element_text(size = 30)) +
+      facet_wrap(~ ratio.slopecat + ratio.pcat) +
+      scale_x_discrete(breaks = unique(annual.mean$year)[seq(1, 50, 10)])
+)
+  
+print(ratio_mean_plot)
+
+# real TS
+ts_ratio_mean_plot <- ggplotly(
+      ggplot(annual.mean, aes(x=year, y = mean_wtr_air_ratio, group=site_code)) +
+      geom_line(aes(color = site_code)) +
+      xlab("Year") +
+      ggtitle("Annual Mean Water Temperatures Across USGS Sites") +
+      theme_minimal() +
+      theme(text = element_text(size = 30)) +
+      facet_wrap(~ ratio.slopecat + ratio.pcat) +
+      scale_x_discrete(breaks = unique(annual.mean$year)[seq(1, 50, 10)])
+)
+
+print(ts_ratio_mean_plot)
+```
+
+### min
+
+```{r}
+# keep only records > certain period of years
+annual.min <- annual %>%
+  filter(year < 2022) %>%
+  filter(site_code %in% site_n$site_code) %>%
+  mutate(
+    wtr_air_min_ratio = min_wtr_temp/min_tmin..deg.c.
+  )
+
+# singificane and slope testing
+# Determine p-values of regression
+p.vals = sapply(unique(annual.min$site_code), function(i) {
+  coef(summary(lm(year ~ min_wtr_temp, data=annual.min[annual.min$site_code==i, ])))[2,4]
+})
+
+slope.vals = sapply(unique(annual.min$site_code), function(i) {
+  coef(summary(lm(year ~ min_wtr_temp, data=annual.min[annual.min$site_code==i, ])))[2,1]
+})
+
+# for ratio
+ratio.p.vals = sapply(unique(annual.min$site_code), function(i) {
+  coef(summary(lm(year ~ wtr_air_min_ratio, data=annual.min[annual.min$site_code==i, ])))[2,4]
+})
+
+ratio.slope.vals = sapply(unique(annual.min$site_code), function(i) {
+  coef(summary(lm(year ~ wtr_air_min_ratio, data=annual.min[annual.min$site_code==i, ])))[2,1]
+})
+
+```
+    
+```{r}
+annual.min <- annual.min %>%
+  mutate(
+    pval = p.vals[site_code],
+    pcat = pmap(pval),
+    slope = slope.vals[site_code],
+    slopecat = slopemap(slope),
+    # ratio
+    ratio.pval = ratio.p.vals[site_code],
+    ratio.pcat = pmap(ratio.pval),
+    ratio.slope = ratio.slope.vals[site_code],
+    ratio.slopecat = slopemap(ratio.slope)
+  )
+
+wtr_min_plot <- ggplotly(
+      ggplot(annual.min, aes(x=year, y=min_wtr_temp, group=site_code)) +
+      geom_point(aes(color = site_code)) +
+      geom_smooth(
+        data=annual.min,
+        aes(year, min_wtr_temp, colour=site_code),
+        method='lm',
+        se = FALSE
+      ) +
+      xlab("Year") +
+      ggtitle("Annual Min Water Temperatures Across USGS Sites") +
+      theme_minimal() +
+      theme(text = element_text(size = 30)) +
+      facet_wrap(~ slopecat + pcat) +
+      scale_x_discrete(breaks = unique(annual.min$year)[seq(1, 50, 10)])
+)
+  
+print(wtr_min_plot)
+
+air_min_plot <- ggplotly(
+      ggplot(annual.min, aes(x=year, y=min_tmin..deg.c., group=site_code)) +
+      geom_point(aes(color = site_code)) +
+      geom_smooth(
+        data=annual.min,
+        aes(year, min_wtr_temp, colour=site_code),
+        method='lm',
+        se = FALSE
+      ) +
+      xlab("Year") +
+      ggtitle("Annual Min Air Temperatures Across USGS Sites") +
+      theme_minimal() +
+      theme(text = element_text(size = 30)) +
+      facet_wrap(~ slopecat + pcat) +
+      scale_x_discrete(breaks = unique(annual.min$year)[seq(1, 50, 10)])
+)
+  
+print(air_min_plot)
+
+combo_min_plot <- ggplotly(
+      ggplot(annual.min, aes(x=year, group=site_code)) +
+      ## geom_point(aes(color = site_code)) +
+      geom_smooth(
+        data=annual.min,
+        aes(year, min_wtr_temp, colour=site_code),
+        method='lm',
+        se = FALSE
+      ) +
+      geom_smooth(
+        data=annual.min,
+        aes(year, y=min_tmin..deg.c., colour=site_code),
+        method='lm',
+        se = FALSE,
+        linetype = "dashed"
+      ) +
+      xlab("Year") +
+      ggtitle("Annual Min Water Temperatures Across USGS Sites") +
+      theme_minimal() +
+      theme(text = element_text(size = 30)) +
+      facet_wrap(~ slopecat + pcat) +
+      scale_x_discrete(breaks = unique(annual.min$year)[seq(1, 50, 10)])
+)
+  
+print(combo_min_plot)
+
+# water:air temp ratio
+ratio_min_plot <- ggplotly(
+      ggplot(annual.min, aes(x=year, y=wtr_air_min_ratio, group=site_code)) +
+      geom_point(aes(color = site_code)) +
+      geom_smooth(
+        data=annual.min,
+        aes(year, wtr_air_min_ratio, colour=site_code),
+        method='lm',
+        se = FALSE
+      ) +
+      xlab("Year") +
+      ggtitle("Annual Mean of Water:Air Minimum Temperature Ratios Across USGS Sites") +
+      theme_minimal() +
+      theme(text = element_text(size = 30)) +
+      facet_wrap(~ ratio.slopecat + ratio.pcat) +
+      scale_x_discrete(breaks = unique(annual.min$year)[seq(1, 50, 10)])
+)
+  
+print(ratio_min_plot)
+
+# real TS
+ts_ratio_min_plot <- ggplotly(
+      ggplot(annual.min, aes(x=year, y = wtr_air_min_ratio, group=site_code)) +
+      geom_line(aes(color = site_code)) +
+      xlab("Year") +
+      ggtitle("Annual Min Water Temperatures Across USGS Sites") +
+      theme_minimal() +
+      theme(text = element_text(size = 30)) +
+      facet_wrap(~ ratio.slopecat + ratio.pcat) +
+      scale_x_discrete(breaks = unique(annual.min$year)[seq(1, 50, 10)])
+)
+
+print(ts_ratio_min_plot)
+```
+
+### max
+let's look at a plot of the Z-score (a metric of the distance of a particular point to it's dataset mean, values between -2 and 2, with 0 representing the perfect mean, and -2 and 2 representing two standard deviations below and above respectively)
+
+```{r}
+# keep only records > certain period of years
+annual.max <- annual %>%
+  filter(year < 2022) %>%
+  filter(site_code %in% site_n$site_code) %>%
+  mutate(
+    wtr_air_max_ratio = max_wtr_temp/max_tmax..deg.c.
+  )
+
+# singificane and slope testing
+# Determaxe p-values of regression
+p.vals = sapply(unique(annual.max$site_code), function(i) {
+  coef(summary(lm(year ~ max_wtr_temp, data=annual.max[annual.max$site_code==i, ])))[2,4]
+})
+
+slope.vals = sapply(unique(annual.max$site_code), function(i) {
+  coef(summary(lm(year ~ max_wtr_temp, data=annual.max[annual.max$site_code==i, ])))[2,1]
+})
+
+# for ratio
+ratio.p.vals = sapply(unique(annual.max$site_code), function(i) {
+  coef(summary(lm(year ~ wtr_air_max_ratio, data=annual.max[annual.max$site_code==i, ])))[2,4]
+})
+
+ratio.slope.vals = sapply(unique(annual.max$site_code), function(i) {
+  coef(summary(lm(year ~ wtr_air_max_ratio, data=annual.max[annual.max$site_code==i, ])))[2,1]
+})
+
+
+annual.max <- annual.max %>%
+  mutate(
+    pval = p.vals[site_code],
+    pcat = pmap(pval),
+    slope = slope.vals[site_code],
+    slopecat = slopemap(slope),
+    # ratio
+    ratio.pval = ratio.p.vals[site_code],
+    ratio.pcat = pmap(ratio.pval),
+    ratio.slope = ratio.slope.vals[site_code],
+    ratio.slopecat = slopemap(ratio.slope)
+  )
+
+wtr_max_plot <- ggplotly(
+      ggplot(annual.max, aes(x=year, y=max_wtr_temp, group=site_code)) +
+      geom_point(aes(color = site_code)) +
+      geom_smooth(
+        data=annual.max,
+        aes(year, max_wtr_temp, colour=site_code),
+        method='lm',
+        se = FALSE
+      ) +
+      xlab("Year") +
+      ggtitle("Annual Max Water Temperatures Across USGS Sites") +
+      theme_minimal() +
+      theme(text = element_text(size = 30)) +
+      facet_wrap(~ slopecat + pcat) +
+      scale_x_discrete(breaks = unique(annual.max$year)[seq(1, 50, 10)])
+)
+  
+print(wtr_max_plot)
+
+air_max_plot <- ggplotly(
+      ggplot(annual.max, aes(x=year, y=max_tmax..deg.c., group=site_code)) +
+      geom_point(aes(color = site_code)) +
+      geom_smooth(
+        data=annual.max,
+        aes(year, max_wtr_temp, colour=site_code),
+        method='lm',
+        se = FALSE
+      ) +
+      xlab("Year") +
+      ggtitle("Annual Max Air Temperatures Across USGS Sites") +
+      theme_minimal() +
+      theme(text = element_text(size = 30)) +
+      facet_wrap(~ slopecat + pcat) +
+      scale_x_discrete(breaks = unique(annual.max$year)[seq(1, 50, 10)])
+)
+  
+print(air_max_plot)
+
+combo_max_plot <- ggplotly(
+      ggplot(annual.max, aes(x=year, group=site_code)) +
+      ## geom_point(aes(color = site_code)) +
+      geom_smooth(
+        data=annual.max,
+        aes(year, max_wtr_temp, colour=site_code),
+        method='lm',
+        se = FALSE
+      ) +
+      geom_smooth(
+        data=annual.max,
+        aes(year, y=max_tmax..deg.c., colour=site_code),
+        method='lm',
+        se = FALSE,
+        linetype = "dashed"
+      ) +
+      xlab("Year") +
+      ggtitle("Annual Max Water and Air Temperatures Across USGS Sites") +
+      theme_minimal() +
+      theme(text = element_text(size = 30)) +
+      facet_wrap(~ slopecat + pcat) +
+      scale_x_discrete(breaks = unique(annual.max$year)[seq(1, 50, 10)])
+)
+  
+print(combo_max_plot)
+
+# water:air temp ratio
+ratio_max_plot <- ggplotly(
+      ggplot(annual.max, aes(x=year, y=wtr_air_max_ratio, group=site_code)) +
+      geom_point(aes(color = site_code)) +
+      geom_smooth(
+        data=annual.max,
+        aes(year, wtr_air_max_ratio, colour=site_code),
+        method='lm',
+        se = FALSE
+      ) +
+      xlab("Year") +
+      ggtitle("Annual Max Water:Air Temperature Ratios Across USGS Sites") +
+      theme_minimal() +
+      theme(text = element_text(size = 30)) +
+      facet_wrap(~ ratio.slopecat + ratio.pcat) +
+      scale_x_discrete(breaks = unique(annual.max$year)[seq(1, 50, 10)])
+)
+  
+print(ratio_max_plot)
+
+# real TS
+ts_ratio_max_plot <- ggplotly(
+      ggplot(annual.max, aes(x=year, y = wtr_air_max_ratio, group=site_code)) +
+      geom_line(aes(color = site_code)) +
+      xlab("Year") +
+      ggtitle("Annual Max Water Temperatures Across USGS Sites") +
+      theme_minimal() +
+      theme(text = element_text(size = 30)) +
+      facet_wrap(~ ratio.slopecat + ratio.pcat) +
+      scale_x_discrete(breaks = unique(annual.max$year)[seq(1, 50, 10)])
+)
+
+print(ts_ratio_max_plot)
+```
