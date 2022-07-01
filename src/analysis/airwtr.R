@@ -252,6 +252,8 @@ for(site in unique(dv.plot$site_code)) {
   na_share <- na_sum/n_sum
 
   if(na_share < 0.2) {
+    # get lm results
+
     # real TS zone
     dv.xts <- xts(dv.site$min, dv.site$date)
     dv.xts <- na.locf(dv.xts)
@@ -259,14 +261,31 @@ for(site in unique(dv.plot$site_code)) {
     dv.app <- apply.yearly(dv.xts, mean)
 
     dv.ts <- ts(dv.app, frequency = 1)
+    mod = lm(coredata(dv.ts) ~ index(dv.ts))
+    modsum = summary(mod)
+
+    plot(dv.ts)
+    abline(mod)
+    my.p = modsum$coefficients[2,4]
+    r2 = modsum$adj.r.squared
+    mylabel = bquote(italic(R)^2 == .(format(r2, digits = 3)))
+    text(x = 2, y = 8.0, labels = mylabel)
+
+    rp = vector()
+    rp[1] = paste("r^2 ==", r2)
+    rp[2] = paste("p   ==", my.p)
+
     dv.plt <- ggplot(dv.ts) +
       ylim(5, 25) +
       geom_point() +
       geom_smooth(aes(y = coredata(dv.ts), x = index(dv.ts)), method = 'lm', se = FALSE) +
-      stat_cor(label.x = 2, label.y = 20) +
-      stat_regline_equation(aes(y = coredata(dv.ts), x = index(dv.ts)), label.x = 2, label.y = 22) +
+      ## stat_cor(label.x = 2, label.y = 20) +
+      stat_regline_equation(aes(y = coredata(dv.ts), x = index(dv.ts)),
+                            label.x = 0.28, label.y = 20, size = 4) +
       theme_minimal() +
-      ggtitle(paste(state, ',', site, ', area:', ws_area))
+      ggtitle(paste(state, ',', site, ', area:', ws_area)) +
+      annotate('text', x = 4.2, y = 17, parse = TRUE,   size = 4, label = rp[1]) +
+      annotate('text', x = 4.2, y = 14, parse = TRUE, size = 4, label = rp[2])
 
     site.ts[[index]] <- dv.plt
     index <- index + 1
