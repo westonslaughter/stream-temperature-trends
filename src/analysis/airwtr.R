@@ -47,16 +47,20 @@ site_info <- site_info %>%
     site_code,
     lat,
     long,
-    ws_area
+    ws_area,
+    begin_year,
+    end_year,
+    state
   ) %>%
   mutate(
-    paralell = as.character(round(as.numeric(lat)))
+    paralell = as.character(round(as.numeric(lat))),
+    span = as.integer(end_year) - as.integer(begin_year)
   )
 
 # combine all data
 dv.plot <- dv %>%
   merge(site_info, by = c('site_code')) %>%
-  filter(year < 2020)
+  filter(year < 2021)
 
 ## magmonths <- magma(12, alpha = 1, begin = 0, end = 1, direction = 1)
 scatter_simple <- function(data, x, y, attr,  discrete = TRUE, stat = "Mean") {
@@ -206,18 +210,116 @@ ggplot(dv.season, aes(x = year, y = wtrair.tmax)) +
 ggsave('doc/fig/ts/airwtr/dv_longterm_airwtr_seasonmax_facetseason.png')
 
 # time series analysis of mean water temp
-dv.site <- dv.plot[dv.plot$site_code == dv.plot$site_code[1],] %>%
-  distinct()
+library(zoo)
+library(xts)
+library(gridExtra)
+library(ggeffects)
+library(sjPlot)
+library(ggpubr)
 
+head(dv.plot)
+head(site_info)
+
+dv.site <- dv.plot[dv.plot$site_code == unique(dv.plot$site_code)[14],]
+
+## dv.meta <- dv.plot %>%
+##   group_by(site_code) %>%
+##   summarise(
+##     n = length(unique(year))
+##   ) %>%
+## filter(n > 39)
+
+## dv.plot <- dv.plot %>%
+##   filter(site_code %in% unique(dv.meta$site_code))
+
+# order dy plot by state
+dv.plot <- dv.plot %>%
+  arrange(desc(ws_area))
+
+# for all sites
+site.ts <- list()
+index <- 1
+
+for(site in unique(dv.plot$site_code)) {
+  ## site <- '12322000'
+  dv.site <- dv.plot[dv.plot$site_code == site,]
+  state <- unique(dv.site$state)
+  ws_area <- unique(dv.site$ws_area)
+
+  # NAs for this stat?
+  na_sum <- sum(is.na(dv.site$mean))
+  n_sum <- length(dv.site$mean)
+  na_share <- na_sum/n_sum
+
+  if(na_share < 0.2) {
+    # real TS zone
+    dv.xts <- xts(dv.site$min, dv.site$date)
+    dv.xts <- na.locf(dv.xts)
+
+    dv.app <- apply.yearly(dv.xts, mean)
+
+    dv.ts <- ts(dv.app, frequency = 1)
+    dv.plt <- ggplot(dv.ts) +
+      ylim(5, 25) +
+      geom_point() +
+      geom_smooth(aes(y = coredata(dv.ts), x = index(dv.ts)), method = 'lm', se = FALSE) +
+      stat_cor(label.x = 2, label.y = 20) +
+      stat_regline_equation(aes(y = coredata(dv.ts), x = index(dv.ts)), label.x = 2, label.y = 22) +
+      theme_minimal() +
+      ggtitle(paste(state, ',', site, ', area:', ws_area))
+
+    site.ts[[index]] <- dv.plt
+    index <- index + 1
+  } else {
+    print(paste('WARNING: site', site, 'omitted'))
+  }
+}
+
+plot_grid(site.ts)
+
+# real TS zone
+dv.xts <- xts(dv.site$mean, dv.site$date)
+dv.xts <- na.locf(dv.xts)
+
+dv.app <- diff(dv.xts)
+dv.app <- rollapply(dv.xts, 7, sd)
+dv.app <- apply.yearly(dv.xts, mean)
+
+dv.ts <- ts(dv.app, frequency = 1)
+plot(dv.ts)
+
+dcm <- decompose(dv.ts)
+plot(dcm)
 
 begin <- min(dv.site$date)
 end <- max(dv.site$date)
 
-dv.ts <- ts(dv.site$wtr.tmean,
-            start = as.Date(begin),
-            end = as.Date(end),
-            frequency = 365)
-dv.annual <- aggregate(dv.ts, FUN = mean)
+dv.zoo <- zoo(dv.site$mean, dv.site$date)
+dv.xts <- xts(dv.site$wtrair.tmean, dv.site$date)
+dv.yr <- to.yearly(dv.xts)
+
+plot(dv.yr)
+
+plot(diff(dv.xts))
+plot(rollapply(dv.xts, 30, mean))
+
+# test fr autocorrelation
+Box.test(dv.xts)
+
+# fit model
+m <- lm(coredata(dv.ts) ~ index(dv.ts))
+plot(m)
+
+# decomp
+dv.ts <- ts(dv.xts, frequency = 365)
+plot(dv.ts)
+
+# fill in NAs
+dv.ts <- na.locf(dv.ts)
+
+dcm <- decompose(dv.ts)
+
+dv.annual <- aggregate.ts(dv.ts, FUN = mean)
 plot(dv.annual)
 
 # moving average
