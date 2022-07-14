@@ -22,6 +22,8 @@
       - ![image](doc/fig/ts/airwtr/dv_longterm_airwtr_seasonmax_facetseason.png)
 
 
+- seems like stream tmeperatures exhibit not only a seasonality, but a periodicity - the mean annual temperatures, from what I can tell, look to me distinctly like sin waves (wether rising, falling, or neither). I tihnk this could potentially be an el nino / la nina effect showing up in the record
+
 # Thermodynamics Hypothesis Exploration
 
 We have gathered daily and grab-sample water temperature records from USGS gauges across the United States, filtering to stream sites with more than 30 years of data and site-years with greater than 80% of days accounted for.

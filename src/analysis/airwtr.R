@@ -17,6 +17,7 @@ dv <- read_feather("data/dv/munged/airwtr/airwtr.feather")
 
 # TEMPORAL attributes
 floor_decade = function(value){ return(value - value %% 10) }
+
 dv <- dv %>%
   mutate(
     year = format(as.Date(date), "%Y"),
@@ -60,7 +61,7 @@ site_info <- site_info %>%
 # combine all data
 dv.plot <- dv %>%
   merge(site_info, by = c('site_code')) %>%
-  filter(year < 2021)
+  filter(year < 2022)
 
 ## magmonths <- magma(12, alpha = 1, begin = 0, end = 1, direction = 1)
 scatter_simple <- function(data, x, y, attr,  discrete = TRUE, stat = "Mean") {
@@ -255,7 +256,7 @@ for(site in unique(dv.plot$site_code)) {
     # get lm results
 
     # real TS zone
-    dv.xts <- xts(dv.site$min, dv.site$date)
+    dv.xts <- xts(dv.site$air.tmin, dv.site$date)
     dv.xts <- na.locf(dv.xts)
 
     dv.app <- apply.yearly(dv.xts, mean)
