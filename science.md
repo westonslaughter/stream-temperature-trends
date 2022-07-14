@@ -1,4 +1,8 @@
 # NOTES
+
+- Thoughts:
+  - actually, we want sites with Temp and Q - this is to test the hypothesis that sites that are not reactng to increased radiation with increased water temperature are likely displacing water instead- which would be reflected in changes in Mean Annual Discharge
+
 - Sites
   - currently, long term daily data from USGS that has > 40 years of temp and discharge, leaves us with 12 sites. 
   - some of these sites go well before 1980 (where Daymet starts) begging the question- should we retrieve a product that goes further back?

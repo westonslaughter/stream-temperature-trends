@@ -221,17 +221,7 @@ library(ggpubr)
 head(dv.plot)
 head(site_info)
 
-dv.site <- dv.plot[dv.plot$site_code == unique(dv.plot$site_code)[14],]
-
-## dv.meta <- dv.plot %>%
-##   group_by(site_code) %>%
-##   summarise(
-##     n = length(unique(year))
-##   ) %>%
-## filter(n > 39)
-
-## dv.plot <- dv.plot %>%
-##   filter(site_code %in% unique(dv.meta$site_code))
+## dv.site <- dv.plot[dv.plot$site_code == unique(dv.plot$site_code)[14],]
 
 # order dy plot by state
 dv.plot <- dv.plot %>%
@@ -239,7 +229,13 @@ dv.plot <- dv.plot %>%
 
 # for all sites
 site.ts <- list()
-index <- 1
+
+# z scores, air, wtr, q
+dv.z <- dv.plot %>%
+  select(dataset, site_code, datetime, max, mean, min, air.tmax, air.tmin, air.tmean) %>%
+  mutate(
+
+  )
 
 for(site in unique(dv.plot$site_code)) {
   ## site <- '12322000'
