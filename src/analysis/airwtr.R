@@ -227,71 +227,163 @@ head(site_info)
 dv.plot <- dv.plot %>%
   arrange(desc(ws_area))
 
-# for all sites
-site.ts <- list()
+
+zcalc <- function(x) {
+  z <- (x - mean(x, na.rm = TRUE)) / sd(x, na.rm = TRUE)
+
+  return(z)
+}
 
 # z scores, air, wtr, q
 dv.z <- dv.plot %>%
-  select(dataset, site_code, datetime, max, mean, min, air.tmax, air.tmin, air.tmean) %>%
-  mutate(
+  select(dataset, state, ws_area, site_code, datetime, max, mean, min, air.tmax, air.tmin, air.tmean)
 
-  )
+# El Nino
+nao_yrs <- c(1897,1900,1903,1906,1915,1919,1926,1931,1941,1942,1958,1966,1973,
+             1978,1979, 1980,1982, 1983,1986, 1987,1988,1991, 1992,1995,1997, 1998,2002, 2003, 2004, 2005, 2006, 2007,2009, 2010, 2014, 2015, 2016, 2018, 2019)
 
-for(site in unique(dv.plot$site_code)) {
+nao_index <- c()
+
+for(i in nao_yrs) {
+  index = i - 1980
+
+  nao_index <- c(nao_index, index)
+}
+
+nao1980 <- nao_index[nao_index >= 0]
+
+# for all sites
+sig.ts <- list()
+insig.ts <- list()
+index <- 1
+
+lm.df <- data.frame(matrix(ncol = 7, nrow = 0))
+colnames(lm.df) <- c('site_code', 'wtrslope', 'wtrp', 'wtrR2', 'airslope', 'airp', 'airR2')
+
+for(site in unique(dv.z$site_code)) {
   ## site <- '12322000'
-  dv.site <- dv.plot[dv.plot$site_code == site,]
+  dv.site <- dv.z[dv.z$site_code == site,]
   state <- unique(dv.site$state)
   ws_area <- unique(dv.site$ws_area)
 
   # NAs for this stat?
-  na_sum <- sum(is.na(dv.site$mean))
-  n_sum <- length(dv.site$mean)
+  na_sum <- sum(is.na(dv.site$min))
+  n_sum <- length(dv.site$min)
   na_share <- na_sum/n_sum
 
   if(na_share < 0.2) {
     # get lm results
 
     # real TS zone
-    dv.xts <- xts(dv.site$air.tmin, dv.site$date)
+    # water
+    dv.xts <- xts(zcalc(dv.site$min), dv.site$date)
     dv.xts <- na.locf(dv.xts)
 
-    dv.app <- apply.yearly(dv.xts, mean)
+    # air
+    air.xts <- xts(zcalc(dv.site$air.tmin), dv.site$date)
+    air.xts <- na.locf(air.xts)
 
+    dv.app <- apply.yearly(dv.xts, mean)
+    air.app <- apply.yearly(air.xts, mean)
+
+    # linear model (wtr)
     dv.ts <- ts(dv.app, frequency = 1)
     mod = lm(coredata(dv.ts) ~ index(dv.ts))
     modsum = summary(mod)
-
-    plot(dv.ts)
-    abline(mod)
     my.p = modsum$coefficients[2,4]
     r2 = modsum$adj.r.squared
     mylabel = bquote(italic(R)^2 == .(format(r2, digits = 3)))
-    text(x = 2, y = 8.0, labels = mylabel)
-
     rp = vector()
     rp[1] = paste("r^2 ==", r2)
     rp[2] = paste("p   ==", my.p)
+    wtrslope <- modsum$coefficients[2]
+
+    # linear model (air)
+    air.ts <- ts(air.app, frequency = 1)
+    amod = lm(coredata(air.ts) ~ index(air.ts))
+    amodsum = summary(amod)
+    amy.p = amodsum$coefficients[2,4]
+    ar2 = amodsum$adj.r.squared
+    amylabel = bquote(italic(R)^2 == .(format(ar2, digits = 3)))
+    arp = vector()
+    arp[1] = paste("r^2 ==", ar2)
+    arp[2] = paste("p   ==",  amy.p)
+    airslope <- amodsum$coefficients[2]
+
+    # save results
+    lm.this <- c(site, wtrslope, my.p, r2, airslope, amy.p, ar2)
+    lm.df <- rbind(lm.df, lm.this)
 
     dv.plt <- ggplot(dv.ts) +
-      ylim(5, 25) +
-      geom_point() +
+      # nao
+      ## geom_vline(xintercept = nao1980, lwd = 5, color = 'grey90') +
+      # base plot
+      ylim(-0.75, 0.75) +
+      geom_point(color = 'blue') +
       geom_smooth(aes(y = coredata(dv.ts), x = index(dv.ts)), method = 'lm', se = FALSE) +
-      ## stat_cor(label.x = 2, label.y = 20) +
+      # water stats
       stat_regline_equation(aes(y = coredata(dv.ts), x = index(dv.ts)),
-                            label.x = 0.28, label.y = 20, size = 4) +
-      theme_minimal() +
-      ggtitle(paste(state, ',', site, ', area:', ws_area)) +
-      annotate('text', x = 4.2, y = 17, parse = TRUE,   size = 4, label = rp[1]) +
-      annotate('text', x = 4.2, y = 14, parse = TRUE, size = 4, label = rp[2])
+                            ## label.x = 10.2,
+                            label.y = 1.0,
+                            size = 4, color = 'blue') +
+      annotate('text', x = 2.6, y = 0.8, parse = TRUE,   size = 4, label = rp[1], color = 'blue') +
+      annotate('text', x = 2.6, y = 0.6, parse = TRUE, size = 4, label = rp[2], color = 'blue') +
+      ylab('Water Temp') +
+      xlab('Year') +
+      # plot stuff
+      ggtitle('Mean Annual Minimum Daily Water and Air Temperatures, Z-Score',
+              subtitle = paste(state, ',', site, ', area:', ws_area)) +
+      theme_blank() +
+      geom_hline(yintercept = 0, color = 'lightgrey') +
+      theme(plot.title = element_text(hjust = 0.5),
+            axis.line = element_blank())
 
-    site.ts[[index]] <- dv.plt
+    air.plt <- ggplot(air.ts) +
+      # nao
+      ## geom_vline(xintercept = nao1980, lwd = 5, color = 'grey90') +
+      # base plot
+      ylim(-0.75, 0.75) +
+      geom_point(color = 'red') +
+      geom_smooth(aes(y = coredata(air.ts), x = index(air.ts)), method = 'lm', se = FALSE, color = 'red') +
+      # air stats
+      stat_regline_equation(aes(y = coredata(air.ts), x = index(air.ts)),
+                            ## label.x = 4.2,
+                            label.y = 1.0,
+                            size = 4, color = 'red') +
+      annotate('text', x = 2.6, y = 0.8, parse = TRUE, size = 4, label = arp[1], color = 'red') +
+      annotate('text', x = 2.6, y = 0.6, parse = TRUE, size = 4, label = arp[2], color = 'red') +
+      ylab('Air Temp') +
+      xlab('Year') +
+      # plot stuff
+      theme_blank() +
+      geom_hline(yintercept = 0, color = 'lightgrey') +
+      theme(plot.title = element_text(hjust = 0.5))
+
+    both.plt <- ggarrange(dv.plt, air.plt, ncol = 1, nrow = 2)
+
+    if(my.p > 0.1) {
+      insig.ts[[site]] <- both.plt
+    } else {
+      sig.ts[[site]] <- both.plt
+    }
+
     index <- index + 1
   } else {
     print(paste('WARNING: site', site, 'omitted'))
   }
 }
 
-plot_grid(site.ts)
+colnames(lm.df) <- c('site_code', 'wtrslope', 'wtrp', 'wtrR2', 'airslope', 'airp', 'airR2')
+lm.df <- lm.df %>%
+  arrange(desc(wtrslope))
+
+sig.lm <- lm.df[lm.df$wtrp <= 0.1,]
+
+sig.ts.sloped <- sig.ts[c(sig.lm$site_code)]
+plot_grid(purrr::compact(sig.ts.sloped))
+
+plot_grid(purrr::compact(sig.ts))
+plot_grid(purrr::compact(insig.ts))
 
 # real TS zone
 dv.xts <- xts(dv.site$mean, dv.site$date)
