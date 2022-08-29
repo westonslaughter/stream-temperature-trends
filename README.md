@@ -13,8 +13,8 @@ pull in GRIDMET data | WS | **5/25** |
 re-create (daily) air-wtr ratio plots with new sites (explore variance by year, month) | WS | **6/24** |
 re-create (annual) MAT-MWT ratio plots with new sites | WS | **5/25** |
 model air-wtr curves for sites using linear, power-law, etc., compare efficacy | WS | **6/24** |
-if above interesting, see if 'curve-type' maps onto watershed hydrogeological or climatic characteristics | WS | **6/24** |
-look at regions of coupling and decoupling (in space and time) -- map onto watershed hydrogeological or climatic characteristics | WS | **6/24** |
+if above interesting, see if 'curve-type' maps onto watershed hydrogeological or climatic characteristics | | **6/24** |
+look at regions of coupling and decoupling (in space and time) -- map onto watershed hydrogeological or climatic characteristics | | **6/24** |
 are streams getting warmer? annual and daily SMK for stream temp (repeat with air for comparison) | |  |
 re-run Mean Annual analysis, but with Mean Annual Spring/Fall/Winter/Summer Mean/Max/Min (?)|  |  |
 contour plots and analysis | |  |
