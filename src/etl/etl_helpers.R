@@ -235,3 +235,75 @@ stateInfoRetrievalLoop <- function(readpath, writepath) {
 ##     )
 ##   }
 ## }
+
+stateInfoRetrievalLoop <- function(readpath, writepath) {
+  print("USGS site info retrieval")
+
+  for (state in state.abb) {
+    print(paste("-- attempting info pull", state))
+
+    tryCatch(
+      expr = {
+        rp <- paste0(readpath, state, ".csv")
+        wp <- paste0(writepath, state, "_info.csv")
+
+        # read in CSV
+        df <- fread(rp,
+                    colClasses=c("character")
+                    )
+
+        if(nrow(df) == 0) {
+          print(paste("---- WARNING:", state, "input CSV is empty"))
+        } else {
+          codes <- unique(df$site_no)
+
+          site_info <- readNWISsite(
+            siteNumbers = codes
+          )
+
+          # save to wrtiepath
+          write.csv(site_info, wp)
+        }
+        print(paste0("---- ", state, ": DONE"))
+      },
+      error = function(e) {
+        print(paste("---- ERROR:", state))
+      },
+      finally = {
+        # if df empty
+        if(nrow(site_info) < 1) {
+          print(paste("------ results empty:", state, "    ", varid))
+        }
+      }
+    )
+  }
+}
+
+usgsSiteRetrieval <- function(service = 'dv', parameterCd = c('00010', '00060'), statCd = '00003',
+                              startDate=as.Date('1980-01-01'), endDate=as.Date('2020-12-31'),
+                              min_obs_day=0.8, writepath = 'data/dv/air_wtr_q/sites/sites.feather') {
+  for(state in state.abb) {
+    writeLines(paste('\npulling', state))
+    stateNWIS <- whatNWISdata(
+            stateCd = state,
+            parameterCd = parameterCd,
+            service = service,
+            startDt = startDate,
+            endDt = endDate,
+            siteType = 'ST',
+            statCd = statCd
+          ) %>%
+      filter(lubridate::year(begin_date) < lubridate::year(startDate),
+             lubridate::year(end_date) > lubridate::year(endDate)) %>%
+      mutate(diff_dates = end_date - begin_date) %>%
+      filter(count_nu > (diff_dates * min_obs_day))
+
+    if(!exists('sites_df')) {
+      sites_df <- stateNWIS
+    } else {
+      sites_df <- rbind(sites_df, stateNWIS)
+    }
+  }
+  return(sites_df)
+}
+
