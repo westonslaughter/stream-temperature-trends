@@ -12,7 +12,6 @@ library(ggpmisc)
 
 # dv longterm data
 ## dv <- read_feather('data/munged/dv/combined/temp_only__air_wtr.feather')
-
 dv <- read_feather("data/dv/munged/airwtr/airwtr.feather")
 
 # TEMPORAL attributes
@@ -25,9 +24,9 @@ dv <- dv %>%
     decade = as.character(floor_decade(as.numeric(year))),
     season = factor(quarters(as.Date(date)), levels = c("Q1", "Q2", "Q3", "Q4"),
                     labels = c("winter", "spring", "summer", "fall")),
-    ## wtr.tmean = as.numeric(wtr.tmean),
-    ## wtr.tmin  = as.numeric(wtr.tmin),
-    ## wtr.tmax  = as.numeric(wtr.tmax),
+    wtr.tmean = as.numeric(mean),
+    wtr.tmin  = as.numeric(min),
+    wtr.tmax  = as.numeric(max),
     ## air.tmean = as.numeric(air.tmean),
     ## air.tmin  = as.numeric(air.tmin),
     ## air.tmax  = as.numeric(air.tmax),
@@ -58,10 +57,27 @@ site_info <- site_info %>%
     span = as.integer(end_year) - as.integer(begin_year)
   )
 
+
 # combine all data
 dv.plot <- dv %>%
   merge(site_info, by = c('site_code')) %>%
-  filter(year < 2022)
+  filter(year < 2022) %>%
+  distinct(site_code, datetime, .keep_all = TRUE)
+
+# site metadat
+site_meta <- dv.plot %>%
+  filter(!is.na(max),
+ !is.na(mean),
+ !is.na(min)) %>%
+  group_by(site_code) %>%
+  summarize(n=n(),
+            n_yrs = n_distinct(lubridate::year(datetime)))
+
+# filter out spotty data
+sites_enough_yrs <- unique(site_meta[site_meta$n_yrs >= 40,]$site_code)
+
+dv.plot <- dv.plot %>%
+  filter(site_code %in% sites_enough_yrs)
 
 ## magmonths <- magma(12, alpha = 1, begin = 0, end = 1, direction = 1)
 scatter_simple <- function(data, x, y, attr,  discrete = TRUE, stat = "Mean") {
@@ -101,11 +117,11 @@ scatter_simple(dv.plot, 'air.tmean', 'mean', 'decade', stat = "Mean", discrete =
 
 ggsave('doc/fig/scatter/dv_longterm_airwtr_max_facetsite_colyr.png')
 
-scatter_simple(dv.plot, 'air.tmin', 'wtr.tmin', 'month', stat = "Mean", discrete = TRUE) +
-  facet_wrap(~ year) +
+scatter_simple(dv.plot, 'air.tmin', 'min', 'month', stat = "Min", discrete = TRUE) +
+  facet_wrap(~ site_code) +
   xlab('\nDaily Minimum Air Temperature (C)') +
   ylab('Daily Minimum Water Temperature (C)\n') +
-  ggtitle('Water to Air Temperature Ratio at 10 USGS Gauges\n1980-2021')
+  ggtitle('Water to Air Temperature Ratio at USGS Gauges\n1980-2021')
 
 scatter_simple(dv.plot, 'air.tmax', 'wtr.tmax', 'month', stat = "Mean", discrete = TRUE) +
   facet_wrap(~ year) +
@@ -134,8 +150,8 @@ ggsave('doc/fig/scatter/dv_longterm_airwtr_mean_facetsite_colvapor.png')
 # show air-water time series at each site
 # remove air/wtr ratios greater than 30
 dv.ratio <- dv.plot %>%
-  filter(wtrair.tmean < 3,
-         wtrair.tmean > -1)
+  filter(wtrair.tmean < 4,
+         wtrair.tmean > -2)
 
 formula <- y ~ x
 ggplot(dv.ratio, aes(x = date, y = wtrair.tmean)) +
@@ -150,7 +166,7 @@ ggplot(dv.ratio, aes(x = date, y = wtrair.tmean)) +
                        geom = 'text',
                        aes(label = paste("P-value = ", signif(..p.value.., digits = 4), sep = "")),
        label.x.npc = 'right', label.y.npc = 0.35, size = 3)
-ggsave('doc/fig/ts/airwtr/dv_longterm_airwtr_mean_facetsite.png')
+## ggsave('doc/fig/ts/airwtr/dv_longterm_airwtr_mean_facetsite.png')
 
 # annual TS
 dv.annual <- dv.plot %>%
@@ -262,6 +278,7 @@ colnames(lm.df) <- c('site_code', 'wtrslope', 'wtrp', 'wtrR2', 'airslope', 'airp
 
 for(site in unique(dv.z$site_code)) {
   ## site <- '12322000'
+  ## site <- '06054500' # Montana
   dv.site <- dv.z[dv.z$site_code == site,]
   state <- unique(dv.site$state)
   ws_area <- unique(dv.site$ws_area)
