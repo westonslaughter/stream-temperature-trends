@@ -307,3 +307,46 @@ usgsSiteRetrieval <- function(service = 'dv', parameterCd = c('00010', '00060'),
   return(sites_df)
 }
 
+
+usgsDataRetrieval <- function(readpath,
+                              writepath,
+                              parameterCd = "00010",
+                              service = "dv",
+                              siteType="ST") {
+  print(paste("USGS data retrieval:", parameterCd))
+
+    tryCatch(
+      expr = {
+        sites <- read_feather(readpath)
+
+        if(nrow(sites) == 0) {
+          print(paste("---- WARNING:", state, "input CSV is empty"))
+        } else {
+          codes <- unique(sites$site_code)
+
+          # get daily mean data
+          for(site in codes) {
+            info <- readNWISdata(
+              sites = site,
+              parameterCd = parameterCd,
+              service = service,
+              startDate = startDate
+            ) %>% rename(
+                    dataset = agency_cd,
+                    site_code = site_no,
+                    datetime = dateTime
+                  )
+
+            print(paste('--- saving', site, 'to feather at', writepath))
+
+            fp <- paste0(writepath, site, '.feather')
+            write_feather(info, fp)
+          }
+        }
+        print(paste0("---- ", service, ": DONE"))
+      },
+      error = function(e) {
+        print(paste("---- ERROR:", site))
+      }
+    )
+  }
