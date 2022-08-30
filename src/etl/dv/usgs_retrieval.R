@@ -24,20 +24,25 @@ min_obs_day <- 0.8
 ## usgsDataRetrieval(readpath = 'data/dv/sites/sites.feather',
 ##                   writepath = 'data/dv/raw/wtr/')
 
+parameterCd <- c('00010', '00060')
+
 # AIR, WATER, DISCHARGE RETRIEVAL
-sites <- usgsSiteRetrieval(startDate=as.Date('1990-01-01'))
+sites <- usgsSiteRetrieval(startDate=as.Date('1990-01-01'), endDate = as.Date('2020-01-01'))
 
 # filter to sites which meet reqs for water temp AND Q
 t_sites <- unique(sites[sites$parm_cd == '00010',]$site_no)
 q_sites <- unique(sites[sites$parm_cd == '00060',]$site_no)
 
 qt_sites <- t_sites[t_sites %in% q_sites]
-qt_sites_x <- sites[sites$site_no %in% qt_sites,] %>%
+qt_sites_df <- sites[sites$site_no %in% qt_sites,] %>%
   group_by(site_no, station_nm) %>%
   summarize(begin_date = min(begin_date),
             end_date = min(end_date))
 
-write_feather(airwtrq_sites, 'data/dv/sites/awq/sites.feather')
+write_feather(qt_sites_df, 'data/dv/sites/awq/sites.feather')
+write_feather(sites, 'data/dv/sites/awq/sites_info.feather')
 
-usgsDataRetrieval(readpath = 'data/dv/sites/sites.feather',
-                  writepath = 'data/dv/raw/wtr/')
+usgsDataRetrieval(readpath = 'data/dv/sites/awq/sites.feather',
+                  writepath = 'data/dv/raw/awq/',
+                  parameterCd = parameterCd,
+                  startDate=as.Date('1980-01-01'))

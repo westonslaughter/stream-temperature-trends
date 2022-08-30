@@ -66,7 +66,7 @@ featherCompiler <- function(fp, site_filter = c()) {
               print("__ CREATING DATAFRAME __")
               print(paste("DONE:", file))
             } else {
-              all_df <- rbind(all_df, file_data)
+              all_df <- dplyr::bind_rows(all_df, file_data)
               print(paste("DONE:", file))
             }
           },
@@ -79,6 +79,31 @@ featherCompiler <- function(fp, site_filter = c()) {
   return(all_df)
 }
 
+## featherCompiler <- function(fp) {
+##   flist <- list.files(fp, full.names = TRUE)
+
+##   for (file in flist) {
+##       tryCatch(
+##         expr = {
+##             file_data <- read_feather(file)
+##             print('GOO')
+
+##             if(!exists("all_df")) {
+##               all_df <- file_data
+##               print("__ CREATING DATAFRAME __")
+##               print(paste("DONE:", file))
+##             } else {
+##               all_df <- rbind(all_df, file_data)
+##               print(paste("DONE:", file))
+##             }
+##           },
+##         error = function(e) {
+##           print(paste("---- ERROR:", file))
+##           }
+##       )
+##   }
+##   return(all_df)
+## }
 stateRetrievalLoop <- function(readpath, writepath, varid = "00010", svc = "dv", type="ST") {
   print(paste("USGS data retrieval:", varid))
 
@@ -312,6 +337,7 @@ usgsDataRetrieval <- function(readpath,
                               writepath,
                               parameterCd = "00010",
                               service = "dv",
+                              startDate = as.Date('1980-01-01'),
                               siteType="ST") {
   print(paste("USGS data retrieval:", parameterCd))
 
@@ -320,17 +346,19 @@ usgsDataRetrieval <- function(readpath,
         sites <- read_feather(readpath)
 
         if(nrow(sites) == 0) {
-          print(paste("---- WARNING:", state, "input CSV is empty"))
+          print(paste("---- WARNING: input CSV is empty"))
         } else {
-          codes <- unique(sites$site_code)
+          codes <- unique(sites$site_no)
 
           # get daily mean data
           for(site in codes) {
+            writeLines(paste('retrieving data,', site))
             info <- readNWISdata(
               sites = site,
               parameterCd = parameterCd,
               service = service,
-              startDate = startDate
+              startDate = startDate,
+              siteType = siteType
             ) %>% rename(
                     dataset = agency_cd,
                     site_code = site_no,
