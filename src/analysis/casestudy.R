@@ -14,6 +14,9 @@ library(stringi)
 library(ggplot2)
 library(ggthemes)
 library(dplyr)                                        #
+library(ggpmisc)
+library(ggpubr)
+library(sjPlot)
 
 ### DATA PREP
 ## MacroSheds
@@ -96,7 +99,9 @@ ms_air <- ms_daymet %>%
               values_from = val)
 ms_case_data <- left_join(case_data, ms_air, by = c('date', 'site_code')) %>%
   mutate(year = lubridate::year(date),
-         month = lubridate::month(date)) %>%
+         month = lubridate::month(date),
+         airmean = (tmax..deg.c..y + tmax..deg.c..y)/2
+         ) %>%
   filter(year > 1980)
 
 
@@ -114,9 +119,6 @@ zcalc <- function(x) {
 ms_summer_annual_data <- ms_case_data %>%
   filter(month %in% c(6,7,8)) %>%
   filter(site_code %in% c('w3', 'w6', 'east_fork', 'west_fork', 'GSWS02', 'GSWS08', 'GSWS09')) %>%
-  mutate(year = as.character(year),
-         airmean = (tmax..deg.c..y + tmax..deg.c..y)/2
-         ) %>%
   group_by(site_code, year) %>%
   summarize(
     wtrmean = mean(temp),
@@ -153,63 +155,48 @@ all.plt
 
 # time series version
 library(xts)
+run_lm <- function(x) {
+    mod = lm(coredata(x) ~ index(x))
+    modsum = summary(mod)
+    rps = vector()
+    pv = modsum$coefficients[2,4]
+    r2 = modsum$adj.r.squared
+    slope <- modsum$coefficients[2]
 
-wtr.ts <- na.locf(xts(scale(ms_case_data$temp), ms_case_data$date))
-wtr.annual <- apply.yearly(wtr.ts, mean)
+    rps['r2'] = paste("r^2 ==", sprintf("%.3f",  r2))
+    rps['pv'] = paste("p   ==", sprintf("%.3f",  pv))
+    rps['slope'] = paste("m   ==",  sprintf("%.3f",  slope))
+    return(rps)
+}
 
-
+wtr_temp_all <- list()
 
 # plots
 for(domain in unique(ms_summer_annual_data$domain)) {
-  for(site in unique(ms[ms$domain == domain,]$site)) {
-    ms <- ms_summer_annual_data[ms_summer_annual_data$site_code == site,]
-    ms_yrs <- ms$year
-    air <- ms$airz
-    wtr <- ms$wtrz
-    q <- ms$qz
+  for(site in unique(ms_summer_annual_data[ms_summer_annual_data$domain == domain,]$site_code)) {
+    ms_case <- ms_case_data %>%
+      filter(month %in% c(6,7,8)) %>%
+      filter(site_code == site)
 
+    wtr.ts <- na.locf(xts(scale(ms_case$temp), ms_case$date))
+    wtr.annual <- ts(apply.yearly(wtr.ts, mean), frequency = 1)
+    wtr.lm <- run_lm(wtr.annual)
 
-    mod = lm(wtr ~ ms_yrs)
-    modsum = summary(mod)
-    my.p = modsum$coefficients[2,4]
-    r2 = modsum$adj.r.squared
-    mylabel = bquote(italic(R)^2 == .(format(r2, digits = 3)))
-    rp = vector()
-    rp[1] = paste("r^2 ==", sprintf("%.3f",  r2))
-    rp[2] = paste("p   ==", sprintf("%.3f",  my.p))
-    wtrslope <- modsum$coefficients[2]
-    wtr.m = paste("m   ==",  sprintf("%.3f",  wtrslope))
-    # linear model (air)
-    amod = lm(air ~ ms_yrs)
-    amodsum = summary(amod)
-    amy.p = amodsum$coefficients[2,4]
-    ar2 = amodsum$adj.r.squared
-    amylabel = bquote(italic(R)^2 == .(format(ar2, digits = 3)))
-    arp = vector()
-    arp[1] = paste("r^2 ==", sprintf("%.3f",  ar2))
-    arp[2] = paste("p   ==",  sprintf("%.3f",  amy.p))
-    airslope <- amodsum$coefficients[2]
-    air.m = paste("m   ==",  sprintf("%.3f",  airslope))
-    # linear model (q)
-    qmod = lm(q ~ ms_yrs)
-    qmodsum = summary(qmod)
-    qmy.p = qmodsum$coefficients[2,4]
-    qr2 = qmodsum$adj.r.squared
-    qmylabel = bquote(italic(R)^2 == .(format(qr2, digits = 3)))
-    qrp = vector()
-    qrp[1] = paste("r^2 ==", sprintf("%.3f",  qr2))
-    qrp[2] = paste("p   ==",  sprintf("%.3f",  qmy.p))
-    qslope <- qmodsum$coefficients[2]
-    q.m = paste("m   ==",  sprintf("%.3f",  qslope))
+    air.ts <- na.locf(xts(scale(ms_case$airmean), ms_case$date))
+    air.annual <- ts(apply.yearly(air.ts, mean), frequency = 1)
+    air.lm <- run_lm(air.annual)
+
+    q.ts <- na.locf(xts(scale(ms_case$discharge), ms_case$date))
+    q.annual <- ts(apply.yearly(q.ts, mean), frequency = 1)
+    q.lm <- run_lm(q.annual)
 
     # plots
-    dv.plt <- ggplot(ms, aes(x=year, y = wtrz)) +
+    wtr.plt <- ggplot(wtr.annual) +
       ylim(-0.75, 0.75) +
       geom_point(color = 'blue') +
-      geom_smooth(aes(y = wtrz, x = year), method = 'lm', se = FALSE) +
+      geom_smooth(aes(y=coredata(wtr.annual), x = index(wtr.annual)), method = 'lm', se = FALSE) +
       # water stats
-      stat_regline_equation(aes(y = wtr, x = ms_yrs),
-                            ## label.x = 10.2,
+      stat_regline_equation(aes(y=coredata(wtr.annual), x = index(wtr.annual)),
                             label.y = 1.0,
                             size = 4, color = 'blue') +
       annotate('text', x = 3.6, y = 0.55, parse = TRUE,   size = 4, label = rp[1], color = 'blue') +
@@ -220,18 +207,12 @@ for(domain in unique(ms_summer_annual_data$domain)) {
       theme_minimal() +
       geom_hline(yintercept = 0, color = 'lightgrey') +
       theme(plot.title = element_text(hjust = 0.5))
-            ## axis.line = element_blank())
 
-    air.plt <- ggplot(air.ts) +
-      # nao
-      ## geom_vline(xintercept = nao1980, lwd = 4, color = 'grey90') +
-      # base plot
+    air.plt <- ggplot(air.annual) +
       ylim(-0.75, 0.75) +
       geom_point(color = 'red') +
-      geom_smooth(aes(y = coredata(air.ts), x = index(air.ts)), method = 'lm', se = FALSE, color = 'red') +
-      # air stats
-      stat_regline_equation(aes(y = coredata(air.ts), x = index(air.ts)),
-                            ## label.x = 4.2,
+      geom_smooth(aes(y = coredata(air.annual), x = index(air.annual)), method = 'lm', se = FALSE, color = 'red') +
+      stat_regline_equation(aes(y = coredata(air.annual), x = index(air.annual)),
                             label.y = 1.0,
                             size = 4, color = 'red') +
       annotate('text', x = 3.6, y = 0.55, parse = TRUE, size = 4, label = arp[1], color = 'red') +
@@ -239,37 +220,31 @@ for(domain in unique(ms_summer_annual_data$domain)) {
       annotate('text', x = 26.6, y = 0.55, parse = TRUE, size = 4, label = air.m, color = 'red') +
       ylab('Air Temp') +
       xlab('Year') +
-      # plot stuff
-      ggtitle(paste(site, ',', station)) +
-      ## ggtitle('Mean Annual Minimum Daily Water and Air Temperatures, Z-Score',
-      ##         subtitle = paste(site, ',', station)) +
-      theme_blank() +
+      ggtitle(paste(domain, ',', site)) +
+      theme_minimal() +
       geom_hline(yintercept = 0, color = 'lightgrey') +
       theme(plot.title = element_text(hjust = 0.5), axis.line = element_blank())
 
-    q.plt <- ggplot(q.ts) +
-      # nao
-      ## geom_vline(xintercept = nao1980, lwd = 4, color = 'grey90') +
-      # base plot
+    q.plt <- ggplot(q.annual) +
       ylim(-0.75, 0.75) +
       geom_point(color = 'black') +
-      geom_smooth(aes(y = coredata(q.ts), x = index(q.ts)), method = 'lm', se = FALSE, color = 'black') +
-      # q stats
-      stat_regline_equation(aes(y = coredata(q.ts), x = index(q.ts)),
-                            ## label.x = 4.2,
+      geom_smooth(aes(y = coredata(q.annual), x = index(q.annual)), method = 'lm', se = FALSE, color = 'black') +
+      stat_regline_equation(aes(y = coredata(q.annual), x = index(q.annual)),
                             label.y = 1.0,
                             size = 4, color = 'black') +
       annotate('text', x = 3.6, y = 0.55, parse = TRUE, size = 4, label = qrp[1], color = 'black') +
       annotate('text', x = 14.6, y = 0.55, parse = TRUE, size = 4, label = qrp[2], color = 'black') +
       annotate('text', x = 26.6, y = 0.55, parse = TRUE, size = 4, label = q.m, color = 'black') +
-      ylab('Mean Q Yield') +
+      ylab('Mean Q') +
       xlab('Year') +
-      # plot stuff
-      theme_blank() +
+      theme_minimal() +
       geom_hline(yintercept = 0, color = 'lightgrey') +
       theme(plot.title = element_text(hjust = 0.5))
+
+    # save to list
+    all.plt <- ggarrange(air.plt, wtr.plt, q.plt, ncol = 1, nrow = 3)
+    wtr_temp_all[[site]] <- all.plt
   }
 }
 
-
-    both.plt <- ggarrange(air.plt, dv.plt, q.plt, ncol = 1, nrow = 3)
+plot_grid(purrr::compact(wtr_temp_all))
