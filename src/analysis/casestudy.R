@@ -55,41 +55,41 @@ case_data <- rbind(ms_temp, ms_q) %>%
   rename(date = datetime)
 
 
-sites <- case_sites_info
+## sites <- case_sites_info
 # get DayMet air data for sites
-for(i in 1:nrow(sites)){
-    site_file <- glue('data/dv/raw/ms/air/{s}.feather', s = sites[i,]$site_code)
+## for(i in 1:nrow(sites)){
+##     site_file <- glue('data/dv/raw/ms/air/{s}.feather', s = sites[i,]$site_code)
 
-    if(file.exists('site_file')) {
-      print('site daymet file already downloaded')
-    } else {
-        url_request <- glue('https://daymet.ornl.gov/single-pixel/api/data?lat={lat}&lon={long}&vars=tmax,tmin,srad,vp,swe,prcp,dayl&start=1980-01-01&end=2021-12-31',
-                            lat = sites$latitude[i],
-                            long = sites$longitude[i])
+##     if(file.exists('site_file')) {
+##       print('site daymet file already downloaded')
+##     } else {
+##         url_request <- glue('https://daymet.ornl.gov/single-pixel/api/data?lat={lat}&lon={long}&vars=tmax,tmin,srad,vp,swe,prcp,dayl&start=1980-01-01&end=2021-12-31',
+##                             lat = sites$latitude[i],
+##                             long = sites$longitude[i])
 
-        temp_file <- tempfile(fileext = '.csv')
-        download.file(url = url_request,
-                      destfile = temp_file,
-                      cacheOK = FALSE,
-                      method = 'libcurl')
+##         temp_file <- tempfile(fileext = '.csv')
+##         download.file(url = url_request,
+##                       destfile = temp_file,
+##                       cacheOK = FALSE,
+##                       method = 'libcurl')
 
-        d <- read.csv(temp_file, colClasses = 'numeric', skip = 7) %>%
-            mutate(date = as.Date(yday, origin = paste0(year, '-01-01'))) %>%
-            mutate(site_code = sites$site_code[i],
-                   data_source = 'daymet') %>%
-            select(date, site_code, dayl..s., prcp..mm.day., srad..W.m.2., swe..kg.m.2.,
-                   tmax..deg.c., tmin..deg.c., vp..Pa.) %>%
-            mutate(data_source = 'daymet') %>%
-            pivot_longer(cols = c('dayl..s.', 'prcp..mm.day.', 'srad..W.m.2.', 'swe..kg.m.2.',
-                                  'tmax..deg.c.', 'tmin..deg.c.', 'vp..Pa.'),
-                         names_to = 'var',
-                         values_to = 'val')
+##         d <- read.csv(temp_file, colClasses = 'numeric', skip = 7) %>%
+##             mutate(date = as.Date(yday, origin = paste0(year, '-01-01'))) %>%
+##             mutate(site_code = sites$site_code[i],
+##                    data_source = 'daymet') %>%
+##             select(date, site_code, dayl..s., prcp..mm.day., srad..W.m.2., swe..kg.m.2.,
+##                    tmax..deg.c., tmin..deg.c., vp..Pa.) %>%
+##             mutate(data_source = 'daymet') %>%
+##             pivot_longer(cols = c('dayl..s.', 'prcp..mm.day.', 'srad..W.m.2.', 'swe..kg.m.2.',
+##                                   'tmax..deg.c.', 'tmin..deg.c.', 'vp..Pa.'),
+##                          names_to = 'var',
+##                          values_to = 'val')
 
-        write_feather(d, site_file)
+##         write_feather(d, site_file)
 
-        file.remove(temp_file)
-    }
-}
+##         file.remove(temp_file)
+##     }
+## }
 
 source('src/etl/etl_helpers.R')
 ms_daymet <- featherCompiler('data/dv/raw/ms/air', site_filter = sites$site_code)
@@ -100,7 +100,7 @@ ms_air <- ms_daymet %>%
 ms_case_data <- left_join(case_data, ms_air, by = c('date', 'site_code')) %>%
   mutate(year = lubridate::year(date),
          month = lubridate::month(date),
-         airmean = (tmax..deg.c..y + tmax..deg.c..y)/2
+         airmean = (tmax..deg.c. + tmin..deg.c.)/2
          ) %>%
   filter(year > 1980)
 
@@ -117,7 +117,10 @@ zcalc <- function(x) {
 # get z score for means of air and water temp and Q
 
 ms_summer_annual_data <- ms_case_data %>%
-  filter(month %in% c(6,7,8)) %>%
+  # summer
+  ## filter(month %in% c(6,7,8)) %>%
+  # winter
+  filter(month %in% c(1,11,12)) %>%
   filter(site_code %in% c('w3', 'w6', 'east_fork', 'west_fork', 'GSWS02', 'GSWS08', 'GSWS09')) %>%
   group_by(site_code, year) %>%
   summarize(
@@ -134,24 +137,23 @@ ms_summer_annual_data <- ms_case_data %>%
 
 library(ggpubr)
 # plot
-air.plt <- ggplot(ms_summer_annual_data, aes(x = year)) +
-  geom_point(aes(y = airz, color = site_code)) +
-  ylim(3,-3) +
-  facet_wrap(~domain) +
-  theme_minimal()
-wtr.plt <- ggplot(ms_summer_annual_data, aes(x = year)) +
-  geom_point(aes(y = wtrz, color = site_code)) +
-  ylim(3,-3) +
-  facet_wrap(~domain) +
-  theme_minimal()
-q.plt <- ggplot(ms_summer_annual_data, aes(x = year)) +
-  geom_point(aes(y = qz, color = site_code)) +
-  ylim(3,-3) +
-  facet_wrap(~domain) +
-  theme_minimal()
+## air.plt <- ggplot(ms_summer_annual_data, aes(x = year)) +
+##   geom_point(aes(y = airz, color = site_code)) +
+##   ylim(3,-3) +
+##   facet_wrap(~domain) +
+##   theme_minimal()
+## wtr.plt <- ggplot(ms_summer_annual_data, aes(x = year)) +
+##   geom_point(aes(y = wtrz, color = site_code)) +
+##   ylim(3,-3) +
+##   facet_wrap(~domain) +
+##   theme_minimal()
+## q.plt <- ggplot(ms_summer_annual_data, aes(x = year)) +
+##   geom_point(aes(y = qz, color = site_code)) +
+##   ylim(3,-3) +
+##   facet_wrap(~domain) +
+##   theme_minimal()
 
-all.plt <- ggarrange(air.plt, wtr.plt, q.plt, ncol = 1, nrow = 3)
-all.plt
+## all.plt <- ggarrange(air.plt, wtr.plt, q.plt, ncol = 1, nrow = 3)
 
 # time series version
 library(xts)
@@ -175,19 +177,27 @@ wtr_temp_all <- list()
 for(domain in unique(ms_summer_annual_data$domain)) {
   for(site in unique(ms_summer_annual_data[ms_summer_annual_data$domain == domain,]$site_code)) {
     ms_case <- ms_case_data %>%
-      filter(month %in% c(6,7,8)) %>%
+      # summer
+      ## filter(month %in% c(6,7,8)) %>%
+      # winter
+      ## filter(month %in% c(1,11,12)) %>%
       filter(site_code == site)
 
     wtr.ts <- na.locf(xts(scale(ms_case$temp), ms_case$date))
-    wtr.annual <- ts(apply.yearly(wtr.ts, mean), frequency = 1)
-    wtr.lm <- run_lm(wtr.annual)
-
     air.ts <- na.locf(xts(scale(ms_case$airmean), ms_case$date))
-    air.annual <- ts(apply.yearly(air.ts, mean), frequency = 1)
-    air.lm <- run_lm(air.annual)
+    q.ts   <- na.locf(xts(scale(ms_case$discharge), ms_case$date))
 
-    q.ts <- na.locf(xts(scale(ms_case$discharge), ms_case$date))
-    q.annual <- ts(apply.yearly(q.ts, mean), frequency = 1)
+    ## total variability version
+    ## wtr.ts <- na.locf(xts(abs(scale(ms_case$temp)), ms_case$date))
+    ## air.ts <- na.locf(xts(abs(scale(ms_case$airmean)), ms_case$date))
+    ## q.ts   <- na.locf(xts(abs(scale(ms_case$discharge)), ms_case$date))
+
+    wtr.annual <- ts(apply.yearly(wtr.ts, mean), frequency = 1)
+    air.annual <- ts(apply.yearly(air.ts, mean), frequency = 1)
+    q.annual   <- ts(apply.yearly(q.ts, mean), frequency = 1)
+
+    wtr.lm <- run_lm(wtr.annual)
+    air.lm <- run_lm(air.annual)
     q.lm <- run_lm(q.annual)
 
     # plots
@@ -248,3 +258,40 @@ for(domain in unique(ms_summer_annual_data$domain)) {
 }
 
 plot_grid(purrr::compact(wtr_temp_all))
+
+scatter_simple <- function(data, x, y, attr,  discrete = TRUE, stat = "Mean") {
+  title <- paste0("Daily ", stat, " Water Temp vs Daily ", stat," Air Temp, Selected MacroSheds 1980-2022")
+  x_txt <- paste0('Daily ', stat, ' Air Temperature')
+  y_txt <- paste0('Daily ', stat, ' Water Temperature')
+
+  data <- data %>%
+    arrange(desc(year))
+
+  plt <- ggplot(data,
+         aes_string(x = x,
+                    y = y
+                    )) +
+  geom_hline(yintercept=0, color='darkgrey', linetype='dashed') +
+  geom_vline(xintercept=0, color='darkgrey', linetype='dashed') +
+  geom_point(
+    aes_string(color = attr)
+  ) +
+  geom_abline(slope=1,    color='#D22B2B', linetype='dashed') +
+  scale_color_viridis(discrete = discrete, option = "magma", alpha = 0.4) +
+  ylim(-15, 40) +
+  ## xlab(x_txt) +
+  ## ylab(y_txt) +
+  theme_minimal() +
+  theme(text = element_text(size = 30))
+  ## theme(legend.position="none")
+
+  return(plt)
+}
+
+ms_case_scatter <- ms_case_data %>%
+  mutate(month = as.character(month))
+scatter_simple(ms_case_scatter, 'airmean', 'temp', 'month', stat = "Mean", discrete = TRUE) +
+  facet_wrap(~ site_code) +
+  xlab('\n Air Temperature (C)') +
+  ylab(' Water Temperature (C)\n') +
+  ggtitle('Water to Air Temperature Ratio at Selected MacroSheds Sites\n1980-2021')

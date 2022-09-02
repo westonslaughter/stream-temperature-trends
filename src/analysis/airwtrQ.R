@@ -7,6 +7,8 @@ library(viridis)
 library(ggpubr)
 library(ggpmisc)
 
+library(dataRetrieval)
+
 # dv longterm data
 dv <- read_feather("data/dv/munged/airwtr/airwtrQ.feather")
 
@@ -40,14 +42,29 @@ dv <- dv %>%
 
 # SITE and SPATIAL attributes
 ## site_info <- read.csv('data/munged/sites/focal_sites_compiled.csv', colClasses = 'character')
+## site_more <-  read_feather('data/dv/sites/awq/sites.feather') %>%
+##   mutate(
+##     state = substr(station_nm, nchar(station_nm)-1, nchar(station_nm)),
+##   ) %>%
+##   rename(
+##     site_code = site_no
+##   )
+
+## site_extra <- readNWISsite(unique(site_info$site_code)) %>%
+##   rename(site_code = site_no)
 site_info <- read_feather('data/dv/sites/awq/sites_info.feather') %>%
   mutate(
     site_code = site_no,
     lat = dec_lat_va,
     long = dec_long_va,
     begin_year = lubridate::year(begin_date),
-    end_year = lubridate::year(end_date)
+    end_year = lubridate::year(end_date),
+    state = gsub('[. /),]', '', substr(station_nm, nchar(station_nm)-2, nchar(station_nm)))
   )
+
+## %>%
+##   full_join(site_extra, by = "site_code", .keep_all = TRUE)
+
 
 ## site_info <- site_info %>%
 ##   select(
@@ -99,11 +116,13 @@ scatter_simple <- function(data, x, y, attr,  discrete = TRUE, stat = "Mean") {
          aes_string(x = x,
                     y = y
                     )) +
+  geom_hline(yintercept=0, color='darkgrey', linetype='dashed') +
+  geom_vline(xintercept=0, color='darkgrey', linetype='dashed') +
   geom_point(
     aes_string(color = attr)
   ) +
-  geom_abline(slope=1) +
-  scale_color_viridis(discrete = discrete, option = "magma", alpha = 0.1) +
+  geom_abline(slope=1,    color='#D22B2B', linetype='dashed') +
+  scale_color_viridis(discrete = discrete, option = "magma", alpha = 0.4) +
   ylim(-15, 40) +
   ## xlab(x_txt) +
   ## ylab(y_txt) +
@@ -116,11 +135,11 @@ scatter_simple <- function(data, x, y, attr,  discrete = TRUE, stat = "Mean") {
 
 # AIR:WTR
 # show air-wtr distribution shrinking over years (and unique/shapestable air-temp dist signatures at sites)
-scatter_simple(dv.plot, 'air.tmean', 'mean', 'decade', stat = "Mean", discrete = TRUE) +
-  facet_wrap(~ site_code) +
+scatter_simple(dv.plot, 'air.tmean', 'mean', 'month', stat = "Mean", discrete = TRUE) +
+  facet_wrap(~ state) +
   xlab('\n Air Temperature (C)') +
   ylab(' Water Temperature (C)\n') +
-  ggtitle('Water to Air Temperature Ratio at 10 USGS Gauges\n1980-2021')
+  ggtitle('Water to Air Temperature Ratio at USGS Gauges\n1980-2021')
 
 ggsave('doc/fig/scatter/dv_longterm_airwtr_max_facetsite_colyr.png')
 
@@ -174,11 +193,22 @@ ggplot(dv.ratio, aes(x = date, y = wtrair.tmean)) +
                        aes(label = paste("P-value = ", signif(..p.value.., digits = 4), sep = "")),
        label.x.npc = 'right', label.y.npc = 0.35, size = 3)
 ## ggsave('doc/fig/ts/airwtr/dv_longterm_airwtr_mean_facetsite.png')
+library(stringr)
+url = "https://climatedataguide.ucar.edu/sites/default/files/nao_station_annual.txt"
+nao_noaa = read.table(url, sep="\t",fileEncoding = "UTF-8") %>%
+  mutate(
+    year = str_extract(V1, '.+?(?= )'),
+    nao_index = as.numeric(str_extract(V1, ' (.+)'))
+  ) %>%
+  select(year, nao_index)
+nao_noaa <- nao_noaa[-1,]
+
 
 # annual TS
 dv.annual <- dv.plot %>%
   group_by(site_code, year) %>%
   summarize(
+    state = state,
     wtr.tmean = mean(wtr.tmean, na.rm = TRUE),
     wtr.tmin   = mean(wtr.tmin, na.rm = TRUE),
     wtr.tmax   = mean(wtr.tmax, na.rm = TRUE),
@@ -192,15 +222,23 @@ dv.annual <- dv.plot %>%
     q.mean = mean(q.mean, na.rm = TRUE),
     q.min =   mean(q.min, na.rm = TRUE),
     q.max =   mean(q.max, na.rm = TRUE),
+    airwtr.ratio = air.tmean/wtr.tmean,
     vapor = mean(vapor, na.rm = TRUE),
     ppt = mean(ppt, na.rm = TRUE),
     snow = mean(snow, na.rm = TRUE),
     radiation = mean(radiation, na.rm = TRUE)
+  ) %>%
+  full_join(nao_noaa, by=c('year')) %>%
+  ungroup() %>%
+  group_by(site_code) %>%
+  mutate(
+    airz = zcalc(air.tmean),
+    wtrz = zcalc(wtr.tmean)
   )
 
-ggplot(dv.annual, aes(x = as.numeric(year), y = wtr.tmax)) +
+ggplot(dv.annual, aes(x = ppt, y = nao_index)) +
   geom_point() +
-  facet_wrap(~ site_code) +
+  facet_wrap(~ state) +
   geom_smooth(method='lm') +
        stat_poly_eq(aes(label = paste(..rr.label..)),
        label.x.npc = "right", label.y.npc = 0.15,
@@ -210,6 +248,7 @@ ggplot(dv.annual, aes(x = as.numeric(year), y = wtr.tmax)) +
                        geom = 'text',
                        aes(label = paste("P-value = ", signif(..p.value.., digits = 4), sep = "")),
        label.x.npc = 'right', label.y.npc = 0.35, size = 3)
+
 ggsave('doc/fig/ts/airwtr/dv_longterm_wtr_annualtmax_facetsite.png')
 
 # seasonal TS
