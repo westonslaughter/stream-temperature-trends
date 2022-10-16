@@ -7,13 +7,16 @@ list.files("./data/dv/raw/wtr/") %in% list.files("./data/dv/raw/air/daymet/")
 usgs_wtr <- featherCompiler("./data/dv/raw/wtr/")
 ms_wtr <- read_feather("./data/dv/raw/ms/wtr/ms.feather")
 cmb <- read_feather("./data/dv/raw/cbm/cbm.feather")
+ssi <- read_feather("./data/dv/raw/ssi/ssi.feather")
 
 # sites (water sites is limiting factor)
 usgs_sites <- unique(usgs_wtr$site_code)
 ms_sites <- unique(ms_wtr$site_code)
 cmb_sites <- read_feather("./data/dv/sites/cmb_sites.feather") %>%
   pull(site_code)
-sites <- c(usgs_sites, ms_sites, cmb_sites)
+ssi_sites <- read_feather("./data/dv/sites/ssi_sites.feather") %>%
+  pull(site_code)
+sites <- c(usgs_sites, ms_sites, cmb_sites, ssi_sites)
 
 # air
 air <- featherCompiler("./data/dv/raw/air/daymet/", site_filter = sites)
@@ -79,10 +82,31 @@ ms <- ms_wtr %>%
   mutate(dataset = "macrosheds", .before = site_code) %>%
   ungroup()
 
+# Chesapeake Bay Monitoring
+cmb_data <- cmb %>%
+  select(
+    dataset = Agency,
+    site_code,
+    date = date,
+    wtr.tmean = val
+  )
+
+# SSI
+ssi_data <- ssi %>%
+  mutate(
+    dataset = "ssi",
+    wtr.tmean = H2O_Temp) %>%
+  select(
+    dataset,
+    site_code,
+    date,
+    wtr.tmean
+  )
+
 ## Merge
-temp <- rbind(usgs, ms) %>%
+temp <- rbind(usgs, ms, cmb_data, ssi_data) %>%
   left_join(daymet, by = c('site_code', 'date')) %>%
   filter(!is.na(wtr.tmean),
          !is.na(air.tmean))
 
-write_feather(temp, "./data/dv/munged/ms_usgs_airwtr_approved.feather")
+write_feather(temp, "./data/dv/munged/ms_usgs_cmb_ssi_airwtr.feather")

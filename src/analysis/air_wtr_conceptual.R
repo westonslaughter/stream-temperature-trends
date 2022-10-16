@@ -13,7 +13,7 @@ library(ggpmisc)
 source("src/helpers.R")
 
 # load in data
-dv <- read_feather("data/dv/munged/ms_usgs_airwtr.feather") %>%
+dv <- read_feather("data/dv/munged/ms_usgs_cmb_ssi_airwtr.feather") %>%
   mutate(
     year = format(as.Date(date), "%Y"),
     month = factor(format(as.Date(date), "%m")),
@@ -84,6 +84,23 @@ scatter_concept(dv, 'air.tmean', 'wtr.tmean', 'decade', stat = "Mean", discrete 
   ylab(' Water Temperature (C)\n') +
   ggtitle('Water to Air Temperature Ratio at USGS Gauges\n1980-2021')
 
+# AIR:WTR Chesapeake Monitoring
+cmb_dv <- dv %>%
+  filter(!dataset %in% c("USGS", "macrosheds"))
+scatter_concept(cmb_dv, 'air.tmean', 'wtr.tmean', 'year', stat = "Mean", discrete = TRUE) +
+  facet_wrap(~ site_code) +
+  xlab('\n Air Temperature (C)') +
+  ylab(' Water Temperature (C)\n') +
+  ggtitle('Water to Air Temperature Ratio at USGS Gauges\n1980-2021')
+
+# AIR:WTR SSI Data
+ssi_dv <- dv %>%
+  filter(dataset %in% c("ssi"))
+scatter_concept(ssi_dv, 'air.tmean', 'wtr.tmean', 'year', stat = "Mean", discrete = TRUE) +
+  facet_wrap(~ site_code) +
+  xlab('\n Air Temperature (C)') +
+  ylab(' Water Temperature (C)\n') +
+  ggtitle('Water to Air Temperature Ratio at USGS Gauges\n1980-2021')
 
 ## Case Studies, Narrative Exploration
 ## delaware strong sigmoid in 1999-2000 strong linear in 2020-2021

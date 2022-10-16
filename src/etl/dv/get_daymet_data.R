@@ -50,6 +50,15 @@ cmb_sites <- read_feather("data/dv/sites/cmb_sites.feather") %>%
   )
 sites <- cmb_sites
 
+# Chesapeake Bay Monitoring Program
+ssi_sites <- read_feather("data/dv/sites/ssi_sites.feather") %>%
+  mutate(
+    site_no = site_code
+  ) %>%
+  select(site_no, lat, long)
+
+sites <- ssi_sites
+
 ## sites <- rbind(sites, ms_site_data)
 
 # retrieve daymet data for all sites

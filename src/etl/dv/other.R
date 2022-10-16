@@ -34,4 +34,21 @@ write_feather(cbm_stats, "data/dv/sites/cmb_sites.feather")
 
 
 # California?
-## ssi <- read.csv('./data/dv/raw/ca_nevada_county/deer_creek.csv')
+library(stringr)
+read_plus <- function(flnm) {
+    read_csv(flnm) %>%
+        mutate(site = paste0("ssi_", stringr::str_match(flnm, "[0-9]+")))
+}
+
+ssi.sites <- read_plus('data/raw/ca_nevada_county/ssi/Map_data.csv') %>%
+  mutate(site_code = paste0("ssi_", stringr::str_match(Site1, "[0-9]+")),
+         lat = Lat,
+         long = Long
+         )
+
+ssi <- list.files('data/raw/ca_nevada_county/ssi', full.names = TRUE) %>%
+  map_df(~read_plus(.))
+
+
+write_feather(ssi, "data/dv/raw/ssi/ssi.feather")
+write_feather(ssi.sites, "data/dv/sites/ssi_sites.feather")
