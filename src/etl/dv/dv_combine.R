@@ -2,15 +2,18 @@
 air_files <- list.files("./data/dv/raw/air/daymet/")
 list.files("./data/dv/raw/wtr/") %in% list.files("./data/dv/raw/air/daymet/")
 
-# read in USGS and MacroSheds data
+# read in USGS and MacroSheds and Other data
 # water
 usgs_wtr <- featherCompiler("./data/dv/raw/wtr/")
 ms_wtr <- read_feather("./data/dv/raw/ms/wtr/ms.feather")
+cmb <- read_feather("./data/dv/raw/cbm/cbm.feather")
 
 # sites (water sites is limiting factor)
 usgs_sites <- unique(usgs_wtr$site_code)
 ms_sites <- unique(ms_wtr$site_code)
-sites <- c(usgs_sites, ms_sites)
+cmb_sites <- read_feather("./data/dv/sites/cmb_sites.feather") %>%
+  pull(site_code)
+sites <- c(usgs_sites, ms_sites, cmb_sites)
 
 # air
 air <- featherCompiler("./data/dv/raw/air/daymet/", site_filter = sites)
@@ -43,6 +46,9 @@ daymet <- daymet_long %>%
 # USGS
 # NOTE: very important! USGS is all daily sum data, macrosheds mostly grab samps...
 usgs <- usgs_wtr %>%
+  filter(
+    X_00010_00003_cd == "A"
+  ) %>%
   mutate(
     date = date(datetime)
         ) %>%
@@ -79,4 +85,4 @@ temp <- rbind(usgs, ms) %>%
   filter(!is.na(wtr.tmean),
          !is.na(air.tmean))
 
-write_feather(temp, "./data/dv/munged/ms_usgs_airwtr.feather")
+write_feather(temp, "./data/dv/munged/ms_usgs_airwtr_approved.feather")

@@ -109,7 +109,7 @@ scatter_simple <- function(data, x, y, attr,  discrete = TRUE, stat = "Mean") {
 
 # AIR:WTR
 # show air-wtr distribution shrinking over years (and unique/shapestable air-temp dist signatures at sites)
-scatter_simple(dv.plot, 'air.tmean', 'mean', 'decade', stat = "Mean", discrete = TRUE) +
+scatter_simple(dv.plot, 'air.tmean', 'mean', 'month', stat = "Mean", discrete = TRUE) +
   facet_wrap(~ site_code) +
   xlab('\n Air Temperature (C)') +
   ylab(' Water Temperature (C)\n') +
