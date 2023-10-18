@@ -85,7 +85,7 @@ site_info <- read_feather('data/dv/sites/awq/sites_info.feather') %>%
 # combine all data
 dv.plot <- dv %>%
   merge(site_info, by = c('site_code')) %>%
-  filter(year < 2022) %>%
+  filter(year < 2005, year > 1995) %>%
   distinct(site_code, datetime, .keep_all = TRUE)
 
 # site metadat
@@ -98,10 +98,9 @@ site_meta <- dv.plot %>%
             n_yrs = n_distinct(lubridate::year(datetime)))
 
 # filter out spotty data
-sites_enough_yrs <- unique(site_meta[site_meta$n_yrs >= 30,]$site_code)
-
-dv.plot <- dv.plot %>%
-  filter(site_code %in% sites_enough_yrs)
+## sites_enough_yrs <- unique(site_meta[site_meta$n_yrs >= 30,]$site_code)
+## dv.plot <- dv.plot %>%
+##   filter(site_code %in% sites_enough_yrs)
 
 ## magmonths <- magma(12, alpha = 1, begin = 0, end = 1, direction = 1)
 scatter_simple <- function(data, x, y, attr,  discrete = TRUE, stat = "Mean") {
@@ -136,7 +135,7 @@ scatter_simple <- function(data, x, y, attr,  discrete = TRUE, stat = "Mean") {
 # AIR:WTR
 # show air-wtr distribution shrinking over years (and unique/shapestable air-temp dist signatures at sites)
 scatter_simple(dv.plot, 'air.tmean', 'mean', 'month', stat = "Mean", discrete = TRUE) +
-  facet_wrap(~ state) +
+  facet_wrap(~ site_code) +
   xlab('\n Air Temperature (C)') +
   ylab(' Water Temperature (C)\n') +
   ggtitle('Water to Air Temperature Ratio at USGS Gauges\n1980-2021')

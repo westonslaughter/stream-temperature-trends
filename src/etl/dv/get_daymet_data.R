@@ -19,6 +19,62 @@ sites <- read_feather('data/dv/sites/awq/sites_info.feather') %>%
   filter(site_no %in% site$site_no) %>%
   distinct()
 
+# read in MS
+ms_sites <- read_feather("data/dv/raw/ms/wtr/ms.feather")
+ms_site_data <- ms_download_site_data()
+ms_site_dmn <- ms_site_data %>%
+  select(domain, site_code)
+
+ms_stats <- ms_sites %>%
+  filter(!is.na(val), ms_status == 0, ms_interp == 0) %>%
+  merge(ms_site_dmn, by = 'site_code') %>%
+  group_by(domain, site_code) %>%
+  summarise(n = length(val)) %>%
+  group_by(domain) %>%
+  arrange(desc(n)) %>%
+  slice(1:2) %>%
+  pull(site_code)
+
+
+ms_sites <- ms_site_data %>%
+  select(site_code, latitude, longitude) %>%
+  filter(site_code %in% ms_stats) %>%
+  rename(site_no = site_code, lat = latitude, long = longitude)
+write_feather(ms_sites, "data/dv/sites/ms.feather")
+## sites <- ms_sites
+
+# Chesapeake Bay Monitoring Program
+cmb_sites <- read_feather("data/dv/sites/cmb_sites.feather") %>%
+  mutate(
+    site_no = site_code
+  )
+sites <- cmb_sites
+
+# SSI, CA
+ssi_sites <- read_feather("data/dv/sites/ssi_sites.feather") %>%
+  mutate(
+    site_no = site_code
+  ) %>%
+  select(site_no, lat, long)
+sites <- ssi_sites
+
+# SNP, VA
+snp_sites <- read_feather("data/dv/sites/snp_sites.feather") %>%
+  mutate(
+    site_no = Site_Name
+  ) %>%
+  select(site_no, lat, long)
+sites <- snp_sites
+
+# Texas, LCRA
+lcra <- read.csv("./data/raw/LCRA/sample.csv")
+sites <- lcra %>%
+  select(site_no = site_code, lat, long)
+sites = sites[1,]
+
+
+## sites <- rbind(sites, ms_site_data)
+
 # retrieve daymet data for all sites
 for(i in 1:nrow(sites)){
     site_file <- glue('data/dv/raw/air/daymet/{s}.feather', s = sites[i,1])

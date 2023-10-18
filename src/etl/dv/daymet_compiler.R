@@ -6,7 +6,7 @@ library(lubridate)
 library(feather)
 
 # site info
-sites <- read_feather("data/dv/sites/awq/sites.feather")
+## sites <- read_feather("data/dv/sites/awq/sites.feather")
 
 site_picks <- unique(as.character(sites$site_no))
 for(i in 1:length(site_picks)) {
@@ -24,7 +24,8 @@ for(i in 1:length(site_picks)) {
 ##     max = min(end_date)
 ##   )
 
-daymet_data <- featherCompiler("data/dv/raw/air/daymet", site_picks)
+
+daymet_data <- featherCompiler("data/dv/raw/air/daymet")
 
 # wide form, by var
 daymet_data <- daymet_data %>%

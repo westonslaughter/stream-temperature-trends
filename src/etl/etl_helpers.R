@@ -51,12 +51,17 @@ fileCompiler <- function(fp, site_filter = c()) {
 
 
 featherCompiler <- function(fp, site_filter = c()) {
+  if(length(site_filter) > 0) {
+  flist <- list.files(fp)
+  sites_feather <- paste0(site_filter, ".feather")
+  flist <- flist[flist %in% sites_feather]
+  flist <- paste0(fp, flist)
+  } else {
+
   flist <- list.files(fp, full.names = TRUE)
+  }
 
   for (file in flist) {
-    filter_test <- stri_detect_fixed(file, site_filter)
-
-    if(TRUE %in% filter_test) {
       tryCatch(
         expr = {
             file_data <- read_feather(file)
@@ -74,7 +79,6 @@ featherCompiler <- function(fp, site_filter = c()) {
           print(paste("---- ERROR:", file))
           }
       )
-    }
   }
   return(all_df)
 }
