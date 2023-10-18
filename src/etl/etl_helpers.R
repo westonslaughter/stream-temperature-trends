@@ -66,7 +66,7 @@ featherCompiler <- function(fp, site_filter = c()) {
               print("__ CREATING DATAFRAME __")
               print(paste("DONE:", file))
             } else {
-              all_df <- rbind(all_df, file_data)
+              all_df <- dplyr::bind_rows(all_df, file_data)
               print(paste("DONE:", file))
             }
           },
@@ -79,6 +79,31 @@ featherCompiler <- function(fp, site_filter = c()) {
   return(all_df)
 }
 
+## featherCompiler <- function(fp) {
+##   flist <- list.files(fp, full.names = TRUE)
+
+##   for (file in flist) {
+##       tryCatch(
+##         expr = {
+##             file_data <- read_feather(file)
+##             print('GOO')
+
+##             if(!exists("all_df")) {
+##               all_df <- file_data
+##               print("__ CREATING DATAFRAME __")
+##               print(paste("DONE:", file))
+##             } else {
+##               all_df <- rbind(all_df, file_data)
+##               print(paste("DONE:", file))
+##             }
+##           },
+##         error = function(e) {
+##           print(paste("---- ERROR:", file))
+##           }
+##       )
+##   }
+##   return(all_df)
+## }
 stateRetrievalLoop <- function(readpath, writepath, varid = "00010", svc = "dv", type="ST") {
   print(paste("USGS data retrieval:", varid))
 
@@ -235,3 +260,121 @@ stateInfoRetrievalLoop <- function(readpath, writepath) {
 ##     )
 ##   }
 ## }
+
+stateInfoRetrievalLoop <- function(readpath, writepath) {
+  print("USGS site info retrieval")
+
+  for (state in state.abb) {
+    print(paste("-- attempting info pull", state))
+
+    tryCatch(
+      expr = {
+        rp <- paste0(readpath, state, ".csv")
+        wp <- paste0(writepath, state, "_info.csv")
+
+        # read in CSV
+        df <- fread(rp,
+                    colClasses=c("character")
+                    )
+
+        if(nrow(df) == 0) {
+          print(paste("---- WARNING:", state, "input CSV is empty"))
+        } else {
+          codes <- unique(df$site_no)
+
+          site_info <- readNWISsite(
+            siteNumbers = codes
+          )
+
+          # save to wrtiepath
+          write.csv(site_info, wp)
+        }
+        print(paste0("---- ", state, ": DONE"))
+      },
+      error = function(e) {
+        print(paste("---- ERROR:", state))
+      },
+      finally = {
+        # if df empty
+        if(nrow(site_info) < 1) {
+          print(paste("------ results empty:", state, "    ", varid))
+        }
+      }
+    )
+  }
+}
+
+usgsSiteRetrieval <- function(service = 'dv', parameterCd = c('00010', '00060'), statCd = '00003',
+                              startDate=as.Date('1980-01-01'), endDate=as.Date('2020-12-31'),
+                              min_obs_day=0.8, writepath = 'data/dv/air_wtr_q/sites/sites.feather') {
+  for(state in state.abb) {
+    writeLines(paste('\npulling', state))
+    stateNWIS <- whatNWISdata(
+            stateCd = state,
+            parameterCd = parameterCd,
+            service = service,
+            startDt = startDate,
+            endDt = endDate,
+            siteType = 'ST',
+            statCd = statCd
+          ) %>%
+      filter(lubridate::year(begin_date) < lubridate::year(startDate),
+             lubridate::year(end_date) > lubridate::year(endDate)) %>%
+      mutate(diff_dates = end_date - begin_date) %>%
+      filter(count_nu > (diff_dates * min_obs_day))
+
+    if(!exists('sites_df')) {
+      sites_df <- stateNWIS
+    } else {
+      sites_df <- rbind(sites_df, stateNWIS)
+    }
+  }
+  return(sites_df)
+}
+
+
+usgsDataRetrieval <- function(readpath,
+                              writepath,
+                              parameterCd = "00010",
+                              service = "dv",
+                              startDate = as.Date('1980-01-01'),
+                              siteType="ST") {
+  print(paste("USGS data retrieval:", parameterCd))
+
+    tryCatch(
+      expr = {
+        sites <- read_feather(readpath)
+
+        if(nrow(sites) == 0) {
+          print(paste("---- WARNING: input CSV is empty"))
+        } else {
+          codes <- unique(sites$site_no)
+
+          # get daily mean data
+          for(site in codes) {
+            writeLines(paste('retrieving data,', site))
+            info <- readNWISdata(
+              sites = site,
+              parameterCd = parameterCd,
+              service = service,
+              startDate = startDate,
+              siteType = siteType
+            ) %>% rename(
+                    dataset = agency_cd,
+                    site_code = site_no,
+                    datetime = dateTime
+                  )
+
+            print(paste('--- saving', site, 'to feather at', writepath))
+
+            fp <- paste0(writepath, site, '.feather')
+            write_feather(info, fp)
+          }
+        }
+        print(paste0("---- ", service, ": DONE"))
+      },
+      error = function(e) {
+        print(paste("---- ERROR:", site))
+      }
+    )
+  }

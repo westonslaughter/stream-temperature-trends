@@ -1,0 +1,243 @@
+# Seasonal Mann Kendall Daily Data
+```{r}
+library(dplyr)
+library(feather)
+library(ggplot2)
+library(RColorBrewer)
+library(viridis)
+library(plotly)
+library(Kendall)
+library(trend)
+source("./src/helpers.R")
+
+# load in USGS-Daymet data
+daily <- read_feather("./data/usgs_daymet_all.feather")
+annual <- read_feather("./data/summary/annual_temp_z.feather")
+
+# Mann Kendall & Sen's Slope, Stream Temp
+annual.wtr <- annual %>%
+  select(year, site_code, mean_wtr_temp)
+
+sites <- unique(annual.wtr$site_code)
+
+mk.data <- data.frame(
+  site_code = c(''),
+  mk_tau = c(''),
+  mk_sl = c(''),
+  mk_S = c(''),
+  mk_D = c(''),
+  sens_slope = c(''),
+  sens_conf = c(''),
+  sens_p = c(''),
+  sens_z = c(''),
+  sens_n = c('')
+)
+
+for(i in 1:length(sites)) {
+  
+    annual.ts <- annual.wtr[annual.wtr$site_code == sites[i],]  %>%
+        arrange(year) %>%
+        tidyr::drop_na() %>%
+        select(mean_wtr_temp) %>%
+        ts(frequency = 1,
+           start = min(annual.wtr$year),
+           end = max(annual.wtr$year),
+           )
+
+    annual.mk <- MannKendall(annual.ts)
+    annual.sens <- sens.slope(annual.ts)
+  
+    tryCatch(
+      expr = {
+        # Mann Kendall
+        mk.data[i,]$site_code <- sites[i]
+        mk.data[i,]$mk_tau <- annual.mk[[1]][1]
+        mk.data[i,]$mk_sl <- annual.mk[[2]][1]
+        mk.data[i,]$mk_S <- annual.mk[[3]][1]
+        mk.data[i,]$mk_D <- annual.mk[[4]][1]
+
+        # Sen's Slope
+        mk.data[i,]$sens_slope <- annual.sens$estimates[[1]]
+        mk.data[i,]$sens_conf <- annual.sens$conf.int[[1]]
+        mk.data[i,]$sens_p <- annual.sens$p.value[[1]]
+        mk.data[i,]$sens_z <- annual.sens$statistic[[1]]
+        mk.data[i,]$sens_n <- annual.sens$parameter[[1]]
+      },
+      error = function(e) {
+        print(paste("ERROR:", sites[i]))
+    }
+  ) 
+}
+
+
+write.csv(mk.data, "mannkendall_sens_annual_wtr.csv")
+
+# look at sig trends
+mk.annual.sig <- mk.data %>%
+  filter(mk_sl < .05) %>%
+  filter(sens_p < .05)
+
+plot(mk.annual.sig$sens_slope, mk.annual.sig$mk_tau)
+```
+
+repeat, for air tmeperature data
+
+```{r}
+
+# Mann Kendall & Sen's Slope, Air Temp
+annual.air <- annual %>%
+  select(year, site_code, mean_mean_air_temp)
+
+sites <- unique(annual.air$site_code)
+
+mk.data.air <- data.frame(
+  site_code = c(''),
+  mk_tau = c(''),
+  mk_sl = c(''),
+  mk_S = c(''),
+  mk_D = c(''),
+  sens_slope = c(''),
+  sens_conf = c(''),
+  sens_p = c(''),
+  sens_z = c(''),
+  sens_n = c('')
+)
+
+for(i in 1:length(sites)) {
+  
+    annual.ts <- annual.air[annual.air$site_code == sites[i],]  %>%
+        arrange(year) %>%
+        tidyr::drop_na() %>%
+        select(mean_mean_air_temp) %>%
+        ts(frequency = 1,
+           start = min(annual.air$year),
+           end = max(annual.air$year),
+           )
+
+    annual.mk <- MannKendall(annual.ts)
+    annual.sens <- sens.slope(annual.ts)
+  
+    tryCatch(
+      expr = {
+        # Mann Kendall
+        mk.data.air[i,]$site_code <- sites[i]
+        mk.data.air[i,]$mk_tau <- annual.mk[[1]][1]
+        mk.data.air[i,]$mk_sl <- annual.mk[[2]][1]
+        mk.data.air[i,]$mk_S <- annual.mk[[3]][1]
+        mk.data.air[i,]$mk_D <- annual.mk[[4]][1]
+
+        # Sen's Slope
+        mk.data.air[i,]$sens_slope <- annual.sens$estimates[[1]]
+        mk.data.air[i,]$sens_conf <- annual.sens$conf.int[[1]]
+        mk.data.air[i,]$sens_p <- annual.sens$p.value[[1]]
+        mk.data.air[i,]$sens_z <- annual.sens$statistic[[1]]
+        mk.data.air[i,]$sens_n <- annual.sens$parameter[[1]]
+      },
+      error = function(e) {
+        print(paste("ERROR:", sites[i]))
+    }
+  ) 
+}
+
+
+write.csv(mk.data.air, "mannkendall_sens_annual_air.csv")
+
+# look at sig trends
+mk.annual.sig.air <- mk.data.air %>%
+  filter(mk_sl < .05) %>%
+  filter(sens_p < .05)
+
+plot(mk.annual.sig.air$sens_slope, mk.annual.sig.air$mk_tau)
+
+```
+
+
+# Daily, SMK
+daily.smk <- daily %>%
+  select(date, site_code, wtr_temp)
+
+# Create time series that matches your data
+# x= start date, "mm/dd/yyyy"
+# x= end date, "mm/dd/yyyy"
+
+timer <- function(x,y){
+  data.frame(
+    date = as.Date(seq(as.POSIXlt(x, format="%Y-%m-%d"), as.POSIXlt(y, format="%Y-%m-%d"), by = 'day'))
+    )
+}
+
+
+# Seasonal Mann Kendall
+library(mice)
+library(trend)
+
+daily.ts <- merge(ts, daily.smk, by="date")
+daily.ts.f <- daily.ts %>%
+  tidyr::drop_na()
+library(xts)
+
+
+test.mk <- daily.ts.f %>%
+  filter(site_code == "01481000") %>%
+  select(-site_code) %>%
+  arrange(date)
+
+start.mk <- min(test.mk$date)
+end.mk <- max(test.mk$date)
+ts <- timer(start, end)
+
+test <- ts(test.mk$wtr_temp, frequency = 365, start = c(1971, 1))
+test.smk <- SeasonalMannKendall(test)
+test.sn <- sens.slope(test)
+
+# test
+x <- AutoSMK(daily.smk, ts, "wtr_temp", "01481000", start, end)
+
+# run SMK for each site
+sites <- unique(daily$site_code)
+
+mk.data <- data.frame(
+  site_code = c(''),
+  start_date = c(''),
+  end_date = c(''),
+  smk_tau = c(''),
+  smk_sl = c(''),
+  smk_S = c(''),
+  smk_D = c(''),
+  sen_z = c(''),
+  sen_n = c(''),
+  sen_p = c(''),
+  sen_slope = c(''),
+  sen_conf = c('') 
+)
+
+for(i in 1:length(sites)) {
+  
+    wtr <- daily[daily$site_code == sites[i],] %>%
+        select(date, wtr_temp) %>%
+        arrange(date) %>%
+        tidyr::drop_na()
+  
+    tryCatch(
+      expr = {
+        mk <- SeasonalMannKendall(wtr$wtr_temp)
+        mk.data[i,]$site_code <- sites[i]
+        mk.data[i,]$tau <- mk[[1]][1]
+        mk.data[i,]$sl <- mk[[2]][1]
+        mk.data[i,]$S <- mk[[3]][1]
+        mk.data[i,]$D <- mk[[4]][1]
+
+        mk <- MannKendall(wtr$wtr_temp)
+        mk.data[i,]$site_code <- sites[i]
+        mk.data[i,]$tau <- mk[[1]][1]
+        mk.data[i,]$sl <- mk[[2]][1]
+        mk.data[i,]$S <- mk[[3]][1]
+        mk.data[i,]$D <- mk[[4]][1]
+      },
+      error = function(e) {
+        print(paste("ERROR:", sites[i]))
+    }
+  ) 
+}
+
+```
