@@ -8,6 +8,7 @@ usgs_wtr <- featherCompiler("./data/dv/raw/wtr/")
 ms_wtr <- read_feather("./data/dv/raw/ms/wtr/ms.feather")
 cmb <- read_feather("./data/dv/raw/cbm/cbm.feather")
 ssi <- read_feather("./data/dv/raw/ssi/ssi.feather")
+snp <- read_feather("./data/dv/raw/snp/snp.feather")
 
 # sites (water sites is limiting factor)
 usgs_sites <- unique(usgs_wtr$site_code)
@@ -16,7 +17,9 @@ cmb_sites <- read_feather("./data/dv/sites/cmb_sites.feather") %>%
   pull(site_code)
 ssi_sites <- read_feather("./data/dv/sites/ssi_sites.feather") %>%
   pull(site_code)
-sites <- c(usgs_sites, ms_sites, cmb_sites, ssi_sites)
+snp_sites <- read_feather("./data/dv/sites/snp_sites.feather") %>%
+  pull(Site_Name)
+sites <- c(usgs_sites, ms_sites, cmb_sites, ssi_sites, snp_sites)
 
 # air
 air <- featherCompiler("./data/dv/raw/air/daymet/", site_filter = sites)
@@ -103,10 +106,27 @@ ssi_data <- ssi %>%
     wtr.tmean
   )
 
+# SNP
+snp_data <- snp %>%
+  mutate(
+    dataset = "snp",
+    date = Date,
+    site_code = Site_Name,
+    wtr.tmean = Temp) %>%
+  select(
+    dataset,
+    site_code,
+    date,
+    wtr.tmean
+  ) %>%
+  filter(
+    !is.na(wtr.tmean)
+  )
+
 ## Merge
-temp <- rbind(usgs, ms, cmb_data, ssi_data) %>%
+temp <- rbind(usgs, ms, cmb_data, ssi_data, snp_data) %>%
   left_join(daymet, by = c('site_code', 'date')) %>%
   filter(!is.na(wtr.tmean),
          !is.na(air.tmean))
 
-write_feather(temp, "./data/dv/munged/ms_usgs_cmb_ssi_airwtr.feather")
+write_feather(temp, "./data/dv/munged/ms_usgs_cmb_ssi_snp_airwtr.feather")

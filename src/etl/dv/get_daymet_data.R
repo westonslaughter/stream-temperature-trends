@@ -50,14 +50,28 @@ cmb_sites <- read_feather("data/dv/sites/cmb_sites.feather") %>%
   )
 sites <- cmb_sites
 
-# Chesapeake Bay Monitoring Program
+# SSI, CA
 ssi_sites <- read_feather("data/dv/sites/ssi_sites.feather") %>%
   mutate(
     site_no = site_code
   ) %>%
   select(site_no, lat, long)
-
 sites <- ssi_sites
+
+# SNP, VA
+snp_sites <- read_feather("data/dv/sites/snp_sites.feather") %>%
+  mutate(
+    site_no = Site_Name
+  ) %>%
+  select(site_no, lat, long)
+sites <- snp_sites
+
+# Texas, LCRA
+lcra <- read.csv("./data/raw/LCRA/sample.csv")
+sites <- lcra %>%
+  select(site_no = site_code, lat, long)
+sites = sites[1,]
+
 
 ## sites <- rbind(sites, ms_site_data)
 

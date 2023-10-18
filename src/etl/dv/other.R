@@ -37,7 +37,7 @@ write_feather(cbm_stats, "data/dv/sites/cmb_sites.feather")
 library(stringr)
 read_plus <- function(flnm) {
     read_csv(flnm) %>%
-        mutate(site = paste0("ssi_", stringr::str_match(flnm, "[0-9]+")))
+        mutate(site_code = paste0("ssi_", stringr::str_match(flnm, "[0-9]+")))
 }
 
 ssi.sites <- read_plus('data/raw/ca_nevada_county/ssi/Map_data.csv') %>%
@@ -52,3 +52,20 @@ ssi <- list.files('data/raw/ca_nevada_county/ssi', full.names = TRUE) %>%
 
 write_feather(ssi, "data/dv/raw/ssi/ssi.feather")
 write_feather(ssi.sites, "data/dv/sites/ssi_sites.feather")
+
+# Shenendoah
+read_plus <- function(flnm, prefix = '') {
+    read_csv(flnm) %>%
+        mutate(site_code = paste0(prefix, stringr::str_match(flnm, "[0-9]+")))
+}
+snp <- list.files('data/raw/shenendoah', full.names = TRUE) %>%
+  map_df(~read_plus(., prefix = ''))
+
+snp.sites <- list.files('data/raw/site/SNP', full.names = TRUE) %>%
+  map_df(~read_plus(., prefix = '')) %>%
+  rename(
+    lat = Latitude,
+    long = Longitude
+  )
+write_feather(snp, "data/dv/raw/snp/snp.feather")
+write_feather(snp.sites, "data/dv/sites/snp_sites.feather")

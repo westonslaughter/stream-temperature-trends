@@ -25,7 +25,7 @@ for(i in 1:length(site_picks)) {
 ##   )
 
 
-daymet_data <- featherCompiler("data/dv/raw/air/daymet",)
+daymet_data <- featherCompiler("data/dv/raw/air/daymet")
 
 # wide form, by var
 daymet_data <- daymet_data %>%
